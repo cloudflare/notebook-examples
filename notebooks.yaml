@@ -1,0 +1,7 @@
+notebooks:
+  - file: hello.html
+    title: Hello, World!
+    description: This notebook is simple hello world. It contains a single cell that just prints a string.
+  - file: empty.html
+    title: Empty Notebook
+    description: This notebook does nothing at all. It's here just so the previous one doesn't feel alone.

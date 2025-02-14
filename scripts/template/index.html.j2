@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <link rel="stylesheet" type="text/css" href="assets/index.css" media="screen">
+  <link rel="icon" href="assets/favicon.png">
+
+  <title>Notebook Examples</title>
+</head>
+<body>
+  <div id="container">
+    <header>
+      <img src="assets/logo.svg" alt="Notebook Examples" class="logo">
+      <h1>
+        <span class="name_primary">Notebook</span> <span class="name_secondary">Examples</span>
+      </h1>
+    </header>
+
+    <p>
+      These examples demonstrate how to use the
+      <a href="https://developers.cloudflare.com/api/">Cloudflare API</a> within interactive Python notebooks.
+      They cover a number of relatively simple tasks, from analysing logs to writing billing reports,
+      storing files in <a href="https://www.cloudflare.com/developer-platform/products/r2/">R2</a>,
+      or querying <a href="https://developers.cloudflare.com/d1/">D1</a> databases. They aren't meant as complete solutions,
+      but rather as starting points for your own ideas and explorations.
+    </p>
+
+    <div id="notebooks">
+      <ul>
+      {%- for nb in notebooks %}
+          <li><a href="{{ root_path ~ '/' ~ nb.file }}" class="title">{{nb.title}}</a><span class="description">{{nb.description}}</span></li>
+      {%- endfor %}
+      </ul>
+    </div>
+
+    <p>
+      Each one of these notebooks is being served from <a href="https://pages.cloudflare.com/">Cloudflare Pages</a> and runs entirely within your browser,
+      with all data saved solely in your browser. You can read more about it at <a href="https://docs.marimo.io/guides/wasm/">marimo.io</a> and
+      <a href="https://pyodide.org/">pyodide.org</a>. If you wish to run heavier tasks, you may want to consider running them as an application instead.
+      See the <a href="">source repository</a> to learn how.
+    </p>
+
+    <p>
+      If you have any questions, feel free to join our <a href="https://discord.com/invite/cloudflaredev">Discord server</a>.
+    </p>
+  </div>
+</body>
+</html>
