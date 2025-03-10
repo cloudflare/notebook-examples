@@ -1,0 +1,14 @@
+{
+    "name": "notebook-examples",
+    "version": "0.1.1",
+    "type": "module",
+    "scripts": {
+      "lint": "eslint --ignore-pattern 'eslint.config.*js' scripts",
+      "deploy": "wrangler pages deploy --project-name notebook-examples export"
+    },
+    "dependencies": {
+      "eslint": "^9.22.0",
+      "wrangler": "^3.112.0",
+      "dotenv": "^16.4.7"
+    }
+  }

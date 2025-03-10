@@ -14,6 +14,10 @@ NB_EXPORT_DIR := export/html-wasm
 SCRIPTS_DIR := scripts
 INDEX_DIR := $(shell echo '$(NB_EXPORT_DIR)' | cut -d/ -f1)
 
+ifneq ($(wildcard .env),)
+	include .env
+endif
+
 
 .PHONY: all
 all: venv
@@ -28,12 +32,17 @@ $(PYTHON_VENV): requirements.txt $(PYTHON_CMD)
 	@printf "==> To activate that environment and start the notebooks server, run the following commands:\n"
 	@printf "\n\tsource $(PYTHON_VENV)/bin/activate\n\tmake edit\n\n"
 
+node_modules: package.json
+	npm install
+	touch node_modules
+
 .PHONY: venv
 venv: $(PYTHON_VENV)
 
 .PHONY: lint
-lint: $(PYTHON_VENV)
+lint: $(PYTHON_VENV) node_modules
 	$(PYTHON_VENV)/bin/flake8 $(NB_SOURCE_DIR) $(SCRIPTS_DIR)
+	npm run lint
 
 # Skip any python source code that doesn't appear to be a notebook...
 $(NB_EXPORT_DIR)/%.html: $(NB_SOURCE_DIR)/%.py $(PYTHON_VENV)
@@ -61,12 +70,15 @@ preview: $(PYTHON_VENV) html-wasm
 edit: $(PYTHON_VENV)
 	cd notebooks && ../$(PYTHON_VENV)/bin/marimo edit --skip-update-check
 
+deploy: node_modules lint export
+	npm run deploy
+
 .PHONY: clean
 clean:
 	find . -name '*~' -type f -delete
 	find . -name '*.pyc' -type f -delete
 	find . -name '__pycache__' -type d -delete
-	rm -rf "$(NB_EXPORT_DIR)" "$(INDEX_DIR)"
+	rm -rf "$(NB_EXPORT_DIR)" "$(INDEX_DIR)" node_modules
 
 .PHONY: distclean
 distclean: clean
