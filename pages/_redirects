@@ -1,0 +1,3 @@
+/login /html-wasm/public/login.html
+/oauth/login /html-wasm/public/login.html
+/oauth/callback /html-wasm/public/login.html
