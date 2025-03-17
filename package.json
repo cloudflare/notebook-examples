@@ -4,8 +4,8 @@
     "type": "module",
     "scripts": {
       "lint": "eslint --ignore-pattern 'eslint.config.*js' pages",
-      "preview": "wrangler pages dev --port 8088 export",
-      "deploy": "wrangler pages deploy --project-name notebook-examples export"
+      "preview": "wrangler pages dev --port 8088",
+      "deploy": "wrangler pages deploy"
     },
     "dependencies": {
       "eslint": "^9.22.0",

@@ -74,7 +74,7 @@ preview: html-wasm
 edit: $(PYTHON_VENV)
 	cd notebooks && ../$(PYTHON_VENV)/bin/marimo edit --skip-update-check --port 8088
 
-deploy: node_modules lint export
+deploy: node_modules lint html-wasm
 	npm run deploy
 
 .PHONY: clean
