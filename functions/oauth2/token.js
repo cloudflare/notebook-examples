@@ -2,7 +2,7 @@
 
 
 const IDP_PROTO = 'https';
-const IDP_HOST = 'api.cloudflare.com';
+const IDP_HOST = 'dash.cloudflare.com';
 const IDP_PORT = 443;
 const IDP_TOKEN_PATH = '/oauth2/token';
 
