@@ -3,7 +3,7 @@
     "version": "0.1.1",
     "type": "module",
     "scripts": {
-      "lint": "eslint --ignore-pattern 'eslint.config.*js' pages",
+      "lint": "eslint --ignore-pattern 'eslint.config.*js' pages functions",
       "preview": "wrangler pages dev --port 8088",
       "deploy": "wrangler pages deploy"
     },

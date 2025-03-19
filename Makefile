@@ -58,8 +58,12 @@ $(INDEX_DIR)/_redirects: $(PAGES_DIR)/_redirects
 	mkdir -p $(shell dirname "$@")
 	cp $(PAGES_DIR)/_redirects $@
 
+$(INDEX_DIR)/_routes.json: $(PAGES_DIR)/_routes.json
+	mkdir -p $(shell dirname "$@")
+	cp $(PAGES_DIR)/_routes.json $@
+
 .PHONY: html-wasm
-html-wasm: lint $(INDEX_DIR)/_redirects $(patsubst $(NB_SOURCE_DIR)/%.py,$(NB_EXPORT_DIR)/%.html,$(wildcard $(NB_SOURCE_DIR)/*.py)) $(INDEX_DIR)/index.html
+html-wasm: lint $(INDEX_DIR)/_redirects $(INDEX_DIR)/_routes.json $(patsubst $(NB_SOURCE_DIR)/%.py,$(NB_EXPORT_DIR)/%.html,$(wildcard $(NB_SOURCE_DIR)/*.py)) $(INDEX_DIR)/index.html
 
 .PHONY: export
 export: html-wasm
