@@ -5,3 +5,7 @@ notebooks:
   - file: empty.html
     title: Empty Notebook
     description: This notebook does nothing at all. It's here just so the previous one doesn't feel alone.
+  - file: login.html
+    title: Login Notebook
+    description: Login functions to get Cloudflare credentials. This can be injected into other notebooks
+
