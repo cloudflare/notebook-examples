@@ -17,3 +17,6 @@ notebooks:
   - file: workers.html
     title: Comparing worker stats
     description: This notebook presents a worker logs use case. Involves ranking and comparing workers by requests, errors and cpu time.
+  - file: r2_usage.html
+    title: R2 usage metrics
+    description: This notebook fetches R2 logs on storage and requests. It contains both rankings of buckets, as well as account level usage.
