@@ -20,3 +20,6 @@ notebooks:
   - file: r2_usage.html
     title: R2 usage metrics
     description: This notebook fetches R2 logs on storage and requests. It contains both rankings of buckets, as well as account level usage.
+  - file: kv.html
+    title: KV usage metrics
+    description: This notebook fetches KV request info. It contains both rankings of KVs, as well as account level usage.
