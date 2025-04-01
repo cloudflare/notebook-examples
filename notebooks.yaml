@@ -8,4 +8,6 @@ notebooks:
   - file: login.html
     title: Login Notebook
     description: Login functions to get Cloudflare credentials. This can be injected into other notebooks
-
+  - file: prompt.html
+    title: Workers AI Prompt
+    description: Ask a question from an LLM running in Workers AI
