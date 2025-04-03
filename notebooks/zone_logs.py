@@ -34,7 +34,7 @@ def _(mo):
 
 @app.cell
 def _():
-    TOKEN = "your-api-token"
+    TOKEN = "<your-token>"
 
     HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"
     return HOSTNAME, TOKEN
@@ -43,16 +43,19 @@ def _():
 @app.cell
 def _(HOSTNAME, TOKEN, json, pd, requests):
     # Endpoint to get list of zones
+    # Warning: this will fetch at most 50 zones
     main_call = f'{HOSTNAME}/client/v4/zones'
-    api_resp = requests.get(main_call, headers={'Authorization': 'Bearer {}'.format(TOKEN)}).text
-    _res_raw = pd.DataFrame(json.loads(api_resp)['result'])
+    _api_resp = requests.get(main_call,
+                             headers={'Authorization': 'Bearer {}'.format(TOKEN)},
+                             params={'per_page': 50}).text
+    _res_raw = pd.DataFrame(json.loads(_api_resp)['result'])
 
     # Clean columns
     account_zones = _res_raw[['id', 'name', 'status', 'paused', 'plan', 'modified_on']].copy()
     account_zones['plan_name'] = account_zones['plan'].apply(lambda x: x['name'])
     account_zones = account_zones.drop(columns=['plan'])[['name', 'id', 'plan_name', 'status', 'paused', 'modified_on']]
     account_zones = account_zones.sort_values('name')
-    return account_zones, api_resp, main_call
+    return account_zones, main_call
 
 
 @app.cell
@@ -68,12 +71,12 @@ def _(mo):
         ## Fetch zone logs
 
         Here we will perform a GraphQL query used in the Cloudflare dashboard obtained using
-         [browser developer tools]
-         (https://developers.cloudflare.com/analytics/graphql-api/tutorials/capture-graphql-queries-from-dashboard/).
-         These [differ](https://developers.cloudflare.com/analytics/graphql-api/) from traditional API endpoints in
-         the sense that data is obtained from a POST request to a single endpoint:
-         `https://developers.cloudflare.com/analytics/graphql-api/`.
-         The query as well as related variables are provided in the json body.
+        [browser developer tools](
+        https://developers.cloudflare.com/analytics/graphql-api/tutorials/capture-graphql-queries-from-dashboard/).
+        These [differ](https://developers.cloudflare.com/analytics/graphql-api/) from traditional API endpoints in
+        the sense that data is obtained from a POST request to a single endpoint:
+        `https://developers.cloudflare.com/analytics/graphql-api/`.
+        The query as well as related variables are provided in the json body.
         """
     )
     return
@@ -82,7 +85,7 @@ def _(mo):
 @app.cell
 def _(datetime, timedelta):
     # Choose zone tag (id) to obtain data from, using the table above
-    zone_tag = 'your-zone-tag'
+    zone_tag = '<your-zone-tag>'
 
     # Establish time interval to last 24 hours
     curr_dt = datetime.now().replace(second=0, microsecond=0)
@@ -100,25 +103,20 @@ def _(HOSTNAME, TOKEN, end_dt, json, requests, start_dt, zone_tag):
           totals: httpRequests1hGroups(limit: 10000, filter: {datetime_geq: $since, datetime_lt: $until}) {
             uniq {
               uniques
-              __typename
             }
-            __typename
           }
           zones: httpRequests1hGroups(orderBy: [datetime_ASC], limit: 10000,
                                       filter: {datetime_geq: $since, datetime_lt: $until}) {
             dimensions {
               timeslot: datetime
-              __typename
             }
             uniq {
               uniques
-              __typename
             }
             sum {
               browserMap {
                 pageViews
                 key: uaBrowserFamily
-                __typename
               }
               bytes
               cachedBytes
@@ -127,47 +125,37 @@ def _(HOSTNAME, TOKEN, end_dt, json, requests, start_dt, zone_tag):
                 bytes
                 requests
                 key: edgeResponseContentTypeName
-                __typename
               }
               clientSSLMap {
                 requests
                 key: clientSSLProtocol
-                __typename
               }
               countryMap {
                 bytes
                 requests
                 threats
                 key: clientCountryName
-                __typename
               }
               encryptedBytes
               encryptedRequests
               ipClassMap {
                 requests
                 key: ipType
-                __typename
               }
               pageViews
               requests
               responseStatusMap {
                 requests
                 key: edgeResponseStatus
-                __typename
               }
               threats
               threatPathingMap {
                 requests
                 key: threatPathingName
-                __typename
               }
-              __typename
             }
-            __typename
           }
-          __typename
         }
-        __typename
       }
     }
     '''
@@ -220,7 +208,7 @@ def _(json_analytics, pd):
     df_status_code['time'] = pd.to_datetime(df_status_code['time'],
                                             format='%Y-%m-%dT%H:%M:00Z').astype('datetime64[s]')
 
-    df_status_code = df_status_code.groupby(['time', '__typename', 'key']).agg({
+    df_status_code = df_status_code.groupby(['time', 'key']).agg({
         'requests': 'sum'
     }).reset_index()
     # For now, we do not want status codes to be interpreted as integers
@@ -245,7 +233,7 @@ def _(df_status_code):
     # The "Other" label must be aggregated
     df_status_summary = df_status_summary.groupby('key').agg({
         'requests': 'sum'
-    }).reset_index().sort_values('requests').reset_index(drop=True)
+    }).reset_index().sort_values('requests', ascending=False).reset_index(drop=True)
 
     # Percentage out of all requests
     df_status_summary['share_requests'] = df_status_summary['requests'] / df_status_summary['requests'].sum() * 100
@@ -321,115 +309,87 @@ def _(
             sum {
               edgeResponseBytes
               visits
-              __typename
             }
-            __typename
           }
           topPaths: httpRequestsAdaptiveGroups(filter: $filter, limit: 15, orderBy: [$order]) {
             count
             avg {
               sampleInterval
-              __typename
             }
             sum {
               edgeResponseBytes
               visits
-              __typename
             }
             dimensions {
               metric: clientRequestPath
-              __typename
             }
-            __typename
           }
           topHosts: httpRequestsAdaptiveGroups(filter: $filter, limit: 15, orderBy: [$order]) {
             count
             avg {
               sampleInterval
-              __typename
             }
             sum {
               edgeResponseBytes
               visits
-              __typename
             }
             dimensions {
               metric: clientRequestHTTPHost
-              __typename
             }
-            __typename
           }
           topBrowsers: httpRequestsAdaptiveGroups(filter: $filter, limit: 15, orderBy: [$order]) {
             count
             avg {
               sampleInterval
-              __typename
             }
             sum {
               edgeResponseBytes
               visits
-              __typename
             }
             dimensions {
               metric: userAgentBrowser
-              __typename
             }
-            __typename
           }
           topEdgeStatusCodes: httpRequestsAdaptiveGroups(filter: $filter, limit: 15, orderBy: [$order]) {
             count
             avg {
               sampleInterval
-              __typename
             }
             sum {
               edgeResponseBytes
               visits
-              __typename
             }
             dimensions {
               metric: edgeResponseStatus
-              __typename
             }
-            __typename
           }
           countries: httpRequestsAdaptiveGroups(filter: $filter, limit: 200, orderBy: [$order]) {
             count
             avg {
               sampleInterval
-              __typename
             }
             sum {
               edgeResponseBytes
               visits
-              __typename
             }
             dimensions {
               metric: clientCountryName
-              __typename
             }
-            __typename
           }
           topUserAgents: httpRequestsAdaptiveGroups(filter: $filter, limit: 15, orderBy: [$order]) {
             count
             avg {
               sampleInterval
-              __typename
             }
             sum {
               edgeResponseBytes
               visits
-              __typename
             }
             dimensions {
               metric: userAgent
-              __typename
             }
-            __typename
           }
-          __typename
         }
-        __typename
       }
     }
     '''
@@ -468,8 +428,8 @@ def _(pd):
 def _(mo):
     mo.md(
         r"""
-        Most of these attributes tend to be too large to fit comfortably into chart labels, so we will display
-              them as tables instead:
+        Most of these attributes tend to be too large to fit into chart labels, so we will display
+        them as tables instead:
         """
     )
     return
@@ -508,6 +468,22 @@ def _(mo):
 @app.cell
 def _(json_dict_filtered, top_n_from_json):
     top_n_from_json(json_dict_filtered, 'topPaths')
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## Going further
+
+        This notebook barely scratches the surface of zone-level traffic analytics, as there are a plethora of other
+        statistics that can be obtained from GraphQL.<br>
+        Some examples include diving deeper into API related requests and check which requests are being rate limited,
+        check if there is content which is largely uncached, perform anomaly detection on traffic by country, and much
+        more.
+        """
+    )
     return
 
 
