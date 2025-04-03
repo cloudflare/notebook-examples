@@ -24,7 +24,9 @@ def _(mo):
         In this notebook, we will show a simple use case involving workers.
 
         **Prerequisites:**<br>
-         - API token (see [here](https://developers.cloudflare.com/r2/api/s3/tokens/) for info on how to create one).
+         - API token (see [here](https://developers.cloudflare.com/r2/api/s3/tokens/) for info on how
+         to create one);<br>
+         - at least one active worker.
         """
     )
     return
@@ -32,8 +34,8 @@ def _(mo):
 
 @app.cell
 def _(datetime, timedelta):
-    CF_ACCOUNT_TAG = "your_account_id"
-    CF_API_TOKEN = "your_api_token"
+    CF_ACCOUNT_TAG = "<your-account-tag>"
+    CF_API_TOKEN = "<your-token>"
 
     HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"
 
@@ -65,7 +67,6 @@ def _(
               requests
               subrequests
               responseBodySize
-              __typename
             }
             quantiles {
               cpuTimeP50
@@ -84,35 +85,27 @@ def _(
               responseBodySizeP75
               responseBodySizeP99
               responseBodySizeP999
-              __typename
             }
             dimensions {
               scriptName
               datetimeHour
               status
               scriptVersion
-              __typename
             }
-            __typename
           }
           workersSubrequestsAdaptiveGroups(limit: 10000, filter: $filter) {
             sum {
               requestBodySizeUncached
               subrequests
-              __typename
             }
             dimensions {
               usageModel
               datetimeHour
               cacheStatus
               scriptVersion
-              __typename
             }
-            __typename
           }
-          __typename
         }
-        __typename
       }
     }
     '''
@@ -142,8 +135,8 @@ def _(mo):
         Here, we will show the top workers by 4 metrics also available in dash: requests, errors,
         disconnects and median CPU time.
         Results are returned on a hourly basis, so here is how these metrics are aggregated:<br>
-         - requests are summed;
-         - dash combines both errors and disconnects, here we show them standalone, summed as well;
+         - requests are summed;<br>
+         - dash combines both errors and disconnects, here we show them standalone, summed as well;<br>
          - cpu time is averaged out of all hourly 50th percentiles.
         """
     )
@@ -210,13 +203,19 @@ def _(alt, df_worker_agg):
 
     # Workers with highest median CPU time
     _top_cpu = df_worker_agg.sort_values('cpu_time', ascending=False).head(_TOP_N)
+    TOP_CPU_TIME_WORKERS = list(_top_cpu.head(5)['worker'].values)
     _cpu_chart = alt.Chart(_top_cpu).mark_bar().encode(
         alt.X('cpu_time:Q', title='CPU time (ms)'),
         alt.Y('worker:N', sort=alt.EncodingSortField(field='cpu_time', order='descending')),
     ).properties(height=220, width=300)
 
     (_requests_chart | _errors_chart) & (_disconnects_chart | _cpu_chart)
-    return TOP_DISCONNECTS_WORKERS, TOP_ERRORS_WORKERS, TOP_REQUESTS_WORKERS
+    return (
+        TOP_CPU_TIME_WORKERS,
+        TOP_DISCONNECTS_WORKERS,
+        TOP_ERRORS_WORKERS,
+        TOP_REQUESTS_WORKERS,
+    )
 
 
 @app.cell
@@ -275,18 +274,13 @@ def _(
             orderBy: [datetimeFifteenMinutes_ASC]) {
             sum {
               requests
-              __typename
             }
             dimensions {
               datetimeFifteenMinutes
               scriptName
-              __typename
             }
-            __typename
           }
-          __typename
         }
-        __typename
       }
     }
     '''
@@ -373,18 +367,13 @@ def _(
             sum {
               errors
               clientDisconnects
-              __typename
             }
             dimensions {
               datetimeFifteenMinutes
               scriptName
-              __typename
             }
-            __typename
           }
-          __typename
         }
-        __typename
       }
     }
     '''
@@ -441,6 +430,96 @@ def _(TOP_DISCONNECTS_WORKERS, alt, df_workers_errors):
         alt.Y('disconnects', title='Disconnects'),
         alt.Color('worker', title='Worker')
     ).properties(title='Comparison of workers with most disconnects', height=350, width=700)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ### Workers with the highest average CPU times
+
+        Note: This query only fetches the 50th quantile of CPU times, but other quantiles, such as `cpuTimeP90`,
+        `cpuTimeP99` and `cpuTimeP999` can also be queried by adding these columns in the `quantiles {}` field.
+        """
+    )
+    return
+
+
+@app.cell
+def _(
+    CF_ACCOUNT_TAG,
+    CF_API_TOKEN,
+    HOSTNAME,
+    TOP_CPU_TIME_WORKERS,
+    end_dt,
+    json,
+    requests,
+    start_dt,
+):
+    _QUERY_STR = '''
+    query GetWorkerCPUTime($accountTag: string!,
+                           $datetimeStart: Time,
+                           $datetimeEnd: Time,
+                           $scriptNames: [string]) {
+      viewer {
+        accounts(filter: {accountTag: $accountTag}) {
+          workersInvocationsAdaptive(limit: 10000, filter: {
+              scriptName_in: $scriptNames,
+              datetime_geq: $datetimeStart,
+              datetime_leq: $datetimeEnd
+              }, orderBy: [datetimeFifteenMinutes_ASC]) {
+            quantiles {
+              cpuTimeP50
+            }
+            dimensions {
+              datetimeFifteenMinutes
+              scriptName
+            }
+          }
+        }
+      }
+    }
+    '''
+
+    _QUERY_VARIABLES = {"accountTag": CF_ACCOUNT_TAG,
+                        "datetimeStart": start_dt,
+                        "datetimeEnd": end_dt,
+                        "scriptNames": TOP_CPU_TIME_WORKERS}
+
+    _resp_raw = requests.post(f'{HOSTNAME}/client/v4/graphql',
+                              headers={'Authorization': 'Bearer {}'.format(CF_API_TOKEN)},
+                              json={'query': _QUERY_STR, 'variables': _QUERY_VARIABLES})
+
+    json_cpu_data = json.loads(_resp_raw.text)
+    return (json_cpu_data,)
+
+
+@app.cell
+def _(json_cpu_data, pd):
+    # Format data into wide format
+    _all_rows = []
+    for _el in json_cpu_data['data']['viewer']['accounts'][0]['workersInvocationsAdaptive']:
+        _curr_row = dict(
+            time=_el['dimensions']['datetimeFifteenMinutes'],
+            worker=_el['dimensions']['scriptName'],
+            cpuTimeP50=_el['quantiles']['cpuTimeP50'],
+        )
+        _all_rows.append(_curr_row)
+    df_workers_cputime = pd.DataFrame(_all_rows)
+    df_workers_cputime['time'] = pd.to_datetime(df_workers_cputime['time'],
+                                                format='%Y-%m-%dT%H:%M:00Z').astype('datetime64[s]')
+    df_workers_cputime = df_workers_cputime.sort_values(['time', 'worker'])
+    return (df_workers_cputime,)
+
+
+@app.cell
+def _(alt, df_workers_cputime):
+    alt.Chart(df_workers_cputime).mark_line().encode(
+        alt.X('time', title='Time (UTC)'),
+        alt.Y('cpuTimeP50', title='CPU time (P50)'),
+        alt.Color('worker', title='Worker')
+    ).properties(title='Comparison of workers with highest CPU times', height=350, width=700)
     return
 
 
