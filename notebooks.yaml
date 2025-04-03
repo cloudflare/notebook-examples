@@ -7,7 +7,7 @@ notebooks:
     description: This notebook does nothing at all. It's here just so the previous one doesn't feel alone.
   - file: r2.html
     title: R2 kickstart
-    description: This notebook presents a simple R2 kickstart use case. Involves creating bucket, uploading and downloading a file.
+    description: This notebook presents a simple R2 kickstart use case. Involves listing R2 content and downloading a file.
   - file: zone_logs.html
     title: Querying zone logs
     description: This notebook shows an example of querying logs using zone analytics.
