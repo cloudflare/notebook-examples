@@ -5,6 +5,27 @@ notebooks:
   - file: empty.html
     title: Empty Notebook
     description: This notebook does nothing at all. It's here just so the previous one doesn't feel alone.
+  - file: r2.html
+    title: R2 kickstart
+    description: This notebook presents a simple R2 kickstart use case. Involves listing R2 content and downloading a file.
+  - file: zone_logs.html
+    title: Querying zone logs
+    description: This notebook shows an example of querying logs using zone analytics.
+  - file: d1.html
+    title: D1 kickstart
+    description: This notebook presents a simple D1 kickstart use case. Involves creating dataset, populating and querying a table.
+  - file: workers.html
+    title: Comparing worker stats
+    description: This notebook presents a worker logs use case. Involves ranking and comparing workers by requests, errors and cpu time.
+  - file: r2_usage.html
+    title: R2 usage metrics
+    description: This notebook fetches R2 logs on storage and requests. It contains both rankings of buckets, as well as account level usage.
+  - file: kv.html
+    title: KV usage metrics
+    description: This notebook fetches KV request info. It contains both rankings of KVs, as well as account level usage.
+  - file: ai.html
+    title: Cloudflare AI prompts
+    description: This notebook shows interaction examples with Cloudflare AI workers, as well as measuring model usage.
   - file: login.html
     title: Login Notebook
     description: Login functions to get Cloudflare credentials. This can be injected into other notebooks
