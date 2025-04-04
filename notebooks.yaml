@@ -25,7 +25,8 @@ notebooks:
     description: This notebook fetches KV request info. It contains both rankings of KVs, as well as account level usage.
   - file: ai.html
     title: Cloudflare AI prompts
-    description: This notebook shows interaction examples with Cloudflare AI workers, as well as measuring model usage.  - file: login.html
+    description: This notebook shows interaction examples with Cloudflare AI workers, as well as measuring model usage.
+  - file: login.html
     title: Login Notebook
     description: Login functions to get Cloudflare credentials. This can be injected into other notebooks
   - file: prompt.html
