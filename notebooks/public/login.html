@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cloudflare Notebooks Login</title>
+    <style>
+      .login-btn {
+        background-color: #f38020;
+        color: black;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .login-btn:hover {
+        opacity: 0.9;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #f38020;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 2s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 10px;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .success {
+        color: green;
+        font-size: 24px;
+        animation: fadeIn 1s forwards;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 10px;
+      }
+      .failure {
+        color: red;
+        font-size: 24px;
+        animation: fadeIn 1s forwards;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 10px;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .animatedHelp {
+        font-size: 14px;
+        color: #555;
+        animation: fadeIn 1s forwards;
+        margin-left: 5px;
+      }
+      .token-info {
+        margin-top: 10px;
+        font-family: monospace;
+      }
+      #tokenDisplay {
+        margin-top: 5px;
+        padding: 5px;
+        border: 1px dashed #aaa;
+        background-color: #f9f9f9;
+        font-size: 14px;
+        word-break: break-all;
+      }
+      .signup-link {
+        margin-top: 15px;
+        text-align: center;
+        font-family: sans-serif;
+      }
+      .signup-link a {
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: bold;
+        color: #f38020;
+      }
+      .signup-link a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="display: flex; align-items: center; flex-direction: column">
+      <div style="display: flex; align-items: center">
+        <button class="login-btn" onclick="processLogin()">Login</button>
+        <span id="loginStatus" style="display: inline-block; margin-left: 10px;"></span>
+      </div>
+      <div class="signup-link">
+        <a href="https://dash.cloudflare.com/sign-up" target="_blank">
+          New to Cloudflare? Sign up for free!
+        </a>
+      </div>
+    </div>
+    <div id="tokenProgressContainer" style="display: none; align-items: center; flex-direction: column">
+      <span id="tokenStatus" style="display: inline-block; margin-left: 10px;"></span>
+      <div id="tokenDisplay" style="display: none;">Token not yet populated</div>
+    </div>
+    <div id="tokenInstructions" class="token-info" style="display: none; margin-top: 10px">
+      <br />
+    </div>
+    <script>
+      function base64urlEncode(buffer) {
+        var binary = "";
+        var bytes = new Uint8Array(buffer);
+        for (var i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary)
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+      }
+      function generateRandomString(length) {
+        var charset =
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+        var randomValues = new Uint8Array(length);
+        window.crypto.getRandomValues(randomValues);
+        var result = "";
+        for (var i = 0; i < randomValues.length; i++) {
+          result += charset[randomValues[i] % charset.length];
+        }
+        return result;
+      }
+      async function generatePKCECodes() {
+        var RECOMMENDED_CODE_VERIFIER_LENGTH = 96;
+        var codeVerifier = generateRandomString(RECOMMENDED_CODE_VERIFIER_LENGTH);
+        var encoder = new TextEncoder();
+        var data = encoder.encode(codeVerifier);
+        var digest = await window.crypto.subtle.digest("SHA-256", data);
+        var codeChallenge = base64urlEncode(digest);
+        return { codeVerifier: codeVerifier, codeChallenge: codeChallenge };
+      }
+      async function getAuthURL() {
+        var clientId = "ec85d9cd-ff12-4d96-a376-432dbcf0bbfc";
+        var redirectUri = window.top.location.origin + "/oauth/callback";
+        var authEndpoint = "https://dash.cloudflare.com/oauth2/auth";
+        var scopes = "account:read user:read";
+        var pkce = await generatePKCECodes();
+        localStorage.setItem("pkce_code_verifier", pkce.codeVerifier);
+        localStorage.setItem("pkce_state", generateRandomString(32));
+        localStorage.setItem("original_url", window.top.location.href);
+        var authUrl = new URL(authEndpoint);
+        authUrl.searchParams.append("response_type", "code");
+        authUrl.searchParams.append("client_id", clientId);
+        authUrl.searchParams.append("redirect_uri", redirectUri);
+        authUrl.searchParams.append("scope", scopes);
+        authUrl.searchParams.append("state", localStorage.getItem("pkce_state"));
+        authUrl.searchParams.append("code_challenge", pkce.codeChallenge);
+        authUrl.searchParams.append("code_challenge_method", "S256");
+        return authUrl.toString();
+      }
+      async function processLogin() {
+        document.getElementById("loginStatus").innerHTML =
+          "<span class='spinner'></span><span class='animatedHelp'> Opening login in new tab...</span>";
+        try {
+          var authUrl = await getAuthURL();
+          console.log("Opening login in new tab:", authUrl);
+          window.loginWindow = window.open(authUrl, "_blank");
+        } catch (error) {
+          console.error("Error during login:", error);
+          document.getElementById("loginStatus").innerHTML =
+            "<span class='failure'>&#10007;</span><span class='animatedHelp'> Login failed.</span>";
+        }
+      }
+      if (window.opener && window.location.search.indexOf("code") !== -1) {
+        var params = new URLSearchParams(window.location.search);
+        var code = params.get("code");
+        var state = params.get("state");
+        localStorage.setItem("callback_code", code);
+        localStorage.setItem("callback_state", state);
+        localStorage.setItem("login_success", "true");
+        document.body.innerHTML = "<div style='font-size:18px; text-align:center; margin-top:20px;'>Login Successful. Please close this tab.</div>";
+      }
+      window.addEventListener("storage", function (e) {
+        if (e.key === "login_success" && e.newValue === "true") {
+          document.getElementById("loginStatus").innerHTML =
+            "<span class='success'>&#10003;</span><span class='animatedHelp'> Login successful!</span>";
+          localStorage.removeItem("login_success");
+          exchangeAuthCodeForTokens();
+        }
+      });
+      function storeAuthToken(auth_token) {
+        var dbRequest = indexedDB.open("notebook-examples", 1);
+        dbRequest.onupgradeneeded = function (event) {
+          var db = event.target.result;
+          if (!db.objectStoreNames.contains("oauth")) {
+            db.createObjectStore("oauth", { keyPath: "id" });
+          }
+        };
+        dbRequest.onerror = function (event) {
+          console.error("Error opening indexDB:", event);
+        };
+        dbRequest.onsuccess = function (event) {
+          var db = event.target.result;
+          var tx = db.transaction("oauth", "readwrite");
+          var store = tx.objectStore("oauth");
+          var record = { id: "auth_token", token: auth_token, ts: new Date().toISOString() };
+          var putRequest = store.put(record);
+          putRequest.onsuccess = function () {
+            console.log("Stored token successfully.");
+          };
+          putRequest.onerror = function (event) {
+            console.error("Error storing token:", event);
+          };
+          tx.oncomplete = function () {
+            db.close();
+          };
+        };
+      }
+      async function exchangeAuthCodeForTokens() {
+        document.getElementById("tokenProgressContainer").style.display = "flex";
+        document.getElementById("tokenStatus").innerHTML =
+          "<span class='spinner'></span><span class='animatedHelp'> Retrieving token...</span>";
+        document.getElementById("tokenDisplay").style.display = "block";
+        document.getElementById("tokenDisplay").innerHTML = "Token not yet populated";
+        var params = new URLSearchParams(window.location.search);
+        var code = params.get("code");
+        var state = params.get("state");
+        if (!code || !state) {
+          code = localStorage.getItem("callback_code");
+          state = localStorage.getItem("callback_state");
+        }
+        if (!code || !state) {
+          console.error("Missing code or state for token retrieval.");
+          document.getElementById("tokenStatus").innerHTML =
+            "<span class='failure'>&#10007;</span><span class='animatedHelp'> Missing callback parameters.</span>";
+          return null;
+        }
+        var storedState = localStorage.getItem("pkce_state");
+        var codeVerifier = localStorage.getItem("pkce_code_verifier");
+        if (state !== storedState) {
+          console.error("Invalid state parameter.");
+          document.getElementById("tokenStatus").innerHTML =
+            "<span class='failure'>&#10007;</span><span class='animatedHelp'> State mismatch.</span>";
+          return null;
+        }
+        if (!codeVerifier) {
+          console.error("Missing code verifier.");
+          document.getElementById("tokenStatus").innerHTML =
+            "<span class='failure'>&#10007;</span><span class='animatedHelp'> Code verifier missing.</span>";
+          return null;
+        }
+        var tokenUrl = window.top.location.origin + "/oauth2/token";
+        var clientId = "ec85d9cd-ff12-4d96-a376-432dbcf0bbfc";
+        var redirectUri = window.top.location.origin + "/oauth/callback";
+        var body = new URLSearchParams();
+        body.append("grant_type", "authorization_code");
+        body.append("code", code);
+        body.append("redirect_uri", redirectUri);
+        body.append("client_id", clientId);
+        body.append("code_verifier", codeVerifier);
+        try {
+          var response = await fetch(tokenUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString()
+          });
+          if (!response.ok) {
+            var errorText = await response.text();
+            throw new Error("Token request failed: " + errorText);
+          }
+          var tokenResponse = await response.json();
+          console.log("Token response:", tokenResponse);
+          storeAuthToken(tokenResponse.access_token);
+          localStorage.removeItem("pkce_state");
+          localStorage.removeItem("pkce_code_verifier");
+          localStorage.removeItem("callback_code");
+          localStorage.removeItem("callback_state");
+          document.getElementById("tokenDisplay").style.display = "none";
+          document.getElementById("tokenStatus").innerHTML =
+            "<span class='success'>&#10003;</span><span class='animatedHelp'> Token retrieved successfully. See the output of the next notebook cell!</span>";
+          return tokenResponse;
+        } catch (error) {
+          console.error("Error exchanging authorization code for tokens:", error);
+          document.getElementById("tokenStatus").innerHTML =
+            "<span class='failure'>&#10007;</span><span class='animatedHelp'> Token retrieval failed.</span>";
+          return null;
+        }
+      }
+      function oauthCallbackReceived(tokenResponse) {
+        document.getElementById("loginStatus").innerHTML =
+          "<span class='success'>&#10003;</span><span class='animatedHelp'> Callback processed.</span>";
+        document.getElementById("tokenStatus").innerHTML =
+          "<span class='success'>&#10003;</span><span class='animatedHelp'> Token retrieval complete.</span>";
+      }
+    </script>
+  </body>
+</html>

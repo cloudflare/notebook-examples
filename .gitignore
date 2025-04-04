@@ -17,3 +17,5 @@
 __pycache__
 
 export
+node_modules
+node_modules/*
