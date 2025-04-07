@@ -13,22 +13,18 @@ def login():
     import urllib.request
 
     html_path = f"{mo.notebook_location()}/public/login"
-    html = ""
     with urllib.request.urlopen(html_path) as response:
         html = response.read().decode()
-    mo.iframe(html)
-
+    mo.iframe(html, height="1px")
     return html, mo
 
 
 @app.cell
 async def token():
     """
-    Step 2: Loads the Cloudflare API token in python and tests it with a basic account list request.
-    This will automatically pick up a token if it is loaded in the first 3 minutes, no need to ▶ run this cell manually.
-    See the output result at the bottom of this cell!
+    Step 2: After login, load the Cloudflare API token in python and tests it with a basic account list request.
+    Run this cell ▶ and view the output!
     """
-    import asyncio
     import js
     import requests
 
@@ -60,40 +56,26 @@ async def token():
     }
     """
     )
+    token = None
+    tokenRecord = await js.getAuthToken()
+    if tokenRecord and tokenRecord.token:
+        token = tokenRecord.token
 
-    async def wait_for_token(timeout=180):
-        start = asyncio.get_event_loop().time()
-        while True:
-            try:
-                tokenRecord = await js.getAuthToken()
-                if tokenRecord and tokenRecord.token:
-                    return tokenRecord.token
-            except Exception:
-                pass
-            elapsed = asyncio.get_event_loop().time() - start
-            print(f"Waiting for token... {elapsed:.1f}s elapsed", end="\r")
-            await asyncio.sleep(1)
-            if elapsed > timeout:
-                raise TimeoutError("Timed out waiting for token")
-
-    token = await wait_for_token()
     print("\nCloudflare API token for this session:")
     print(token)
 
     # API request test using standard Python output
-    url = "https://examples-api-proxy.notebooks.cfdata.org/client/v4/accounts"
+    url = "https://examples-api-proxy.notebooks.cloudflare.com/client/v4/accounts"
     headers = {"Authorization": f"Bearer {token}"}
-    api_response = requests.get(url, headers=headers)
-    result = api_response.json()
-    print("")
+    result = requests.get(url, headers=headers).json()
     if result.get("success"):
-        print("Token test was successful!")
+        print("\nToken test was successful!")
         accounts = result.get("result", [])
         print("Cloudflare Accounts:")
         for account in accounts:
             print(f"- {account['name']} (ID: {account['id']})")
     else:
-        print("Error listing accounts:")
+        print("\nError listing accounts:")
         print(result)
     return token
 
