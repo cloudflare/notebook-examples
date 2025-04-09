@@ -12,6 +12,7 @@
         font-size: 16px;
         cursor: pointer;
         border-radius: 4px;
+        margin-left: 10px;
       }
       .login-btn:hover {
         opacity: 0.9;
@@ -46,10 +47,6 @@
         display: inline-block;
         vertical-align: middle;
         margin-left: 10px;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
       }
       .animatedHelp {
         font-size: 14px;
@@ -87,7 +84,7 @@
   </head>
   <body>
     <div style="display: flex; align-items: center; flex-direction: column">
-      <div style="display: flex; align-items: center">
+      <div id="loginContainer" style="display: flex; align-items: center">
         <button class="login-btn" onclick="processLogin()">Login</button>
         <span id="loginStatus" style="display: inline-block; margin-left: 10px;"></span>
       </div>
@@ -116,9 +113,9 @@
           .replace(/\//g, "_")
           .replace(/=+$/, "");
       }
+
       function generateRandomString(length) {
-        var charset =
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+        var charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
         var randomValues = new Uint8Array(length);
         window.crypto.getRandomValues(randomValues);
         var result = "";
@@ -127,6 +124,7 @@
         }
         return result;
       }
+
       async function generatePKCECodes() {
         var RECOMMENDED_CODE_VERIFIER_LENGTH = 96;
         var codeVerifier = generateRandomString(RECOMMENDED_CODE_VERIFIER_LENGTH);
@@ -136,11 +134,13 @@
         var codeChallenge = base64urlEncode(digest);
         return { codeVerifier: codeVerifier, codeChallenge: codeChallenge };
       }
+      
+
       async function getAuthURL() {
         var clientId = "ec85d9cd-ff12-4d96-a376-432dbcf0bbfc";
         var redirectUri = window.top.location.origin + "/oauth/callback";
         var authEndpoint = "https://dash.cloudflare.com/oauth2/auth";
-        var scopes = "account:read user:read";
+        var scopes = "account:read user:read secrets_store:read rag:read aiaudit:read pipelines:read aig:read ai:read pages:read lb:read dns_records:read zone:read workers_tail:read access:read logpush:read teams:read sso-connector:read";
         var pkce = await generatePKCECodes();
         localStorage.setItem("pkce_code_verifier", pkce.codeVerifier);
         localStorage.setItem("pkce_state", generateRandomString(32));
@@ -155,7 +155,9 @@
         authUrl.searchParams.append("code_challenge_method", "S256");
         return authUrl.toString();
       }
+
       async function processLogin() {
+        localStorage.setItem("login_success", "pending");
         document.getElementById("loginStatus").innerHTML =
           "<span class='spinner'></span><span class='animatedHelp'> Opening login in new tab...</span>";
         try {
@@ -163,11 +165,13 @@
           console.log("Opening login in new tab:", authUrl);
           window.loginWindow = window.open(authUrl, "_blank");
         } catch (error) {
+          localStorage.setItem("login_success", "false");
           console.error("Error during login:", error);
           document.getElementById("loginStatus").innerHTML =
             "<span class='failure'>&#10007;</span><span class='animatedHelp'> Login failed.</span>";
         }
       }
+
       if (window.opener && window.location.search.indexOf("code") !== -1) {
         var params = new URLSearchParams(window.location.search);
         var code = params.get("code");
@@ -175,16 +179,17 @@
         localStorage.setItem("callback_code", code);
         localStorage.setItem("callback_state", state);
         localStorage.setItem("login_success", "true");
-        document.body.innerHTML = "<div style='font-size:18px; text-align:center; margin-top:20px;'>Login Successful. Please close this tab.</div>";
+        document.body.innerHTML = "";
+        window.close();
       }
+
       window.addEventListener("storage", function (e) {
         if (e.key === "login_success" && e.newValue === "true") {
-          document.getElementById("loginStatus").innerHTML =
-            "<span class='success'>&#10003;</span><span class='animatedHelp'> Login successful!</span>";
           localStorage.removeItem("login_success");
           exchangeAuthCodeForTokens();
         }
       });
+
       function storeAuthToken(auth_token) {
         var dbRequest = indexedDB.open("notebook-examples", 1);
         dbRequest.onupgradeneeded = function (event) {
@@ -213,12 +218,14 @@
           };
         };
       }
+
       async function exchangeAuthCodeForTokens() {
         document.getElementById("tokenProgressContainer").style.display = "flex";
         document.getElementById("tokenStatus").innerHTML =
           "<span class='spinner'></span><span class='animatedHelp'> Retrieving token...</span>";
         document.getElementById("tokenDisplay").style.display = "block";
         document.getElementById("tokenDisplay").innerHTML = "Token not yet populated";
+        
         var params = new URLSearchParams(window.location.search);
         var code = params.get("code");
         var state = params.get("state");
@@ -266,15 +273,23 @@
             throw new Error("Token request failed: " + errorText);
           }
           var tokenResponse = await response.json();
-          console.log("Token response:", tokenResponse);
+          console.log(">> New Token <<");
+          console.log("response:", tokenResponse);
           storeAuthToken(tokenResponse.access_token);
           localStorage.removeItem("pkce_state");
           localStorage.removeItem("pkce_code_verifier");
           localStorage.removeItem("callback_code");
           localStorage.removeItem("callback_state");
+          document.getElementById("tokenProgressContainer").style.display = "flex";
           document.getElementById("tokenDisplay").style.display = "none";
           document.getElementById("tokenStatus").innerHTML =
-            "<span class='success'>&#10003;</span><span class='animatedHelp'> Token retrieved successfully. See the output of the next notebook cell!</span>";
+            "<span class='success'>&#10003;</span><span class='animatedHelp'>Token retrieved successfully. Run the next notebook cell to test!</span>";
+          document.querySelector(".signup-link").style.display = "none";
+          document.getElementById("loginContainer").innerHTML = `
+            <button class="login-btn" onclick="refreshToken()">Refresh Token</button>
+            <button class="login-btn" onclick="logout()">Logout</button>
+            <span id="loginStatus" style="display: inline-block; margin-left: 10px;"></span>
+          `;
           return tokenResponse;
         } catch (error) {
           console.error("Error exchanging authorization code for tokens:", error);
@@ -283,12 +298,110 @@
           return null;
         }
       }
-      function oauthCallbackReceived(tokenResponse) {
-        document.getElementById("loginStatus").innerHTML =
-          "<span class='success'>&#10003;</span><span class='animatedHelp'> Callback processed.</span>";
-        document.getElementById("tokenStatus").innerHTML =
-          "<span class='success'>&#10003;</span><span class='animatedHelp'> Token retrieval complete.</span>";
+
+      async function getAuthToken() {
+        const dbName = 'notebook-examples';
+        const storeName = 'oauth';
+        const keyName = 'auth_token';
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(dbName, 1);
+          request.onupgradeneeded = event => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(storeName)) {
+              db.createObjectStore(storeName, { keyPath: 'id' });
+            }
+          };
+          request.onerror = event => reject("Error opening database " + dbName + ": " + event);
+          request.onsuccess = event => {
+            const db = event.target.result;
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
+            const getRequest = store.get(keyName);
+            getRequest.onsuccess = () => resolve(getRequest.result);
+            getRequest.onerror = event => reject("Missing data " + dbName + ":" + storeName + ":" + keyName + ": " + event);
+          };
+        });
       }
+
+      async function revokeAuthToken() {
+        var token = await getAuthToken();
+        var revokeUrl = "https://dash.cloudflare.com/oauth2/revoke";
+        var body = new URLSearchParams();
+        body.append("client_id", "ec85d9cd-ff12-4d96-a376-432dbcf0bbfc");
+        body.append("token", token.toString());
+        body.append("token_type_hint", "access_token");
+        try {
+          var response = await fetch(revokeUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString()
+          });
+          console.log(">> Token revoked <<");
+        } catch (error) {
+          console.error("Error revoking token: ", error);
+        }
+      }
+
+      async function removeAuthToken() {
+        var dbRequest = indexedDB.open("notebook-examples", 1);
+        dbRequest.onsuccess = function(event) {
+          var db = event.target.result;
+          var tx = db.transaction("oauth", "readwrite");
+          var store = tx.objectStore("oauth");
+          var deleteRequest = store.delete("auth_token");
+          deleteRequest.onsuccess = function() {
+            console.log("Token removed successfully.");
+            document.getElementById("loginContainer").innerHTML = `<button class="login-btn" onclick="processLogin()">Login</button>
+            <span id="loginStatus" style="display: inline-block; margin-left: 10px;"></span>`;
+            document.querySelector(".signup-link").style.display = "block";
+            document.getElementById("tokenStatus").innerHTML = "";
+          };
+          deleteRequest.onerror = function(e) {
+            console.error("Error removing token", e);
+          };
+          tx.oncomplete = function () {
+            db.close();
+          };
+        };
+      }
+
+      async function logout() {
+        revokeAuthToken();
+        removeAuthToken();
+      }
+
+      async function refreshToken() {
+        revokeAuthToken();
+        processLogin()
+      }
+
+      window.addEventListener("load", async function () {
+        try {
+          let tokenRecord = await getAuthToken();
+          if (tokenRecord && tokenRecord.token) {
+            document.getElementById("tokenProgressContainer").style.display = "flex";
+            document.getElementById("tokenDisplay").style.display = "none";
+            document.getElementById("tokenStatus").innerHTML =
+              "<span class='success'>&#10003;</span><span class='animatedHelp'>Token retrieved successfully. Run the next notebook cell to test!</span>";
+            document.querySelector(".signup-link").style.display = "none";
+            document.getElementById("loginContainer").innerHTML = `
+              <button class="login-btn" onclick="refreshToken()">Refresh Token</button>
+              <button class="login-btn" onclick="logout()">Logout</button>
+              <span id="loginStatus" style="display: inline-block; margin-left: 10px;"></span>
+            `;
+          } else {
+            document.getElementById("loginContainer").innerHTML = `<button class="login-btn" onclick="processLogin()">Login</button>
+            <span id="loginStatus" style="display: inline-block; margin-left: 10px;"></span>`;
+            document.querySelector(".signup-link").style.display = "block";
+            document.getElementById("tokenProgressContainer").style.display = "none";
+            document.getElementById("tokenStatus").innerHTML = "";
+          }
+        } catch (err) {
+          console.error("Error checking token on load: ", err);
+        }
+      });
+      globalThis.getAuthToken = getAuthToken;
     </script>
   </body>
 </html>
