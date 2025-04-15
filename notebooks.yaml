@@ -32,3 +32,6 @@ notebooks:
   - file: prompt.html
     title: Workers AI Prompt
     description: Ask a question from an LLM running in Workers AI
+  - file: ai_audit.html
+    title: AI Audit stats
+    description: Check zone traffic by AI crawler.
