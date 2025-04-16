@@ -1,8 +1,8 @@
 altair==5.5.0
-flake8==7.1.1
-marimo==0.11.2
+flake8==7.2.0
+marimo==0.12.9
 pandas==2.2.3
-polars==1.22.0
+polars==1.27.1
 requests==2.32.3
 jinja2==3.1.6
 pyyaml==6.0.2

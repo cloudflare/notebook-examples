@@ -44,11 +44,15 @@ lint: $(PYTHON_VENV) node_modules
 	$(PYTHON_VENV)/bin/flake8 $(NB_SOURCE_DIR) $(PAGES_DIR)
 	npm run lint
 
+.PHONY: html-wasm-clean
+html-wasm-clean:
+	rm -rf "$(NB_EXPORT_DIR)"
+
 # Skip any python source code that doesn't appear to be a notebook...
 $(NB_EXPORT_DIR)/%.html: $(NB_SOURCE_DIR)/%.py $(PYTHON_VENV) $(shell find $(NB_SOURCE_DIR)/public -type f)
 	@if $(PYTHON_VENV)/bin/python -c 'import sys, $(NB_SOURCE_DIR).$(basename $(notdir $<)) as m; sys.exit(0 if hasattr(m, "__generated_with") else 1)' ; then \
 		echo "$<: $@" ; \
-		$(PYTHON_VENV)/bin/marimo -q export html-wasm "$<" -o "$@" --mode edit ; \
+		$(PYTHON_VENV)/bin/marimo -q -y export html-wasm "$<" -o "$@" --mode edit ; \
 	fi
 
 $(INDEX_DIR)/index.html: notebooks.yaml $(PAGES_DIR)/index.py $(shell find $(PAGES_DIR)/template -type f) $(patsubst $(NB_SOURCE_DIR)/%.py,$(NB_EXPORT_DIR)/%.html,$(wildcard $(NB_SOURCE_DIR)/*.py))
@@ -63,7 +67,7 @@ $(INDEX_DIR)/_routes.json: $(PAGES_DIR)/_routes.json
 	cp $(PAGES_DIR)/_routes.json $@
 
 .PHONY: html-wasm
-html-wasm: lint $(INDEX_DIR)/_redirects $(INDEX_DIR)/_routes.json $(patsubst $(NB_SOURCE_DIR)/%.py,$(NB_EXPORT_DIR)/%.html,$(wildcard $(NB_SOURCE_DIR)/*.py)) $(INDEX_DIR)/index.html
+html-wasm: html-wasm-clean lint $(INDEX_DIR)/_redirects $(INDEX_DIR)/_routes.json $(patsubst $(NB_SOURCE_DIR)/%.py,$(NB_EXPORT_DIR)/%.html,$(wildcard $(NB_SOURCE_DIR)/*.py)) $(INDEX_DIR)/index.html
 
 .PHONY: export
 export: html-wasm
