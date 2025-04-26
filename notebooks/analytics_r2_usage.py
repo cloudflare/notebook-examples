@@ -1,19 +1,120 @@
 import marimo
 
-__generated_with = "0.11.2"
-app = marimo.App(width="medium")
+__generated_with = "0.13.2"
+
+app = marimo.App(
+    width="full",
+    auto_download=["ipynb", "html"],
+    app_title="Cloudflare Notebook",
+)
+
+####################
+# Helper Functions #
+####################
+
+# Help function init stubs
+get_token = get_accounts = login = None
+
+
+@app.cell(hide_code=True)
+async def _():
+    # Helper Functions
+    import marimo as mo
+    import js
+    import requests
+    import urllib
+
+    proxy = "https://examples-api-proxy.notebooks.cloudflare.com"
+
+    async def get_token():
+        # Retrieve the token from IndexedDB
+        js.eval(
+            """
+        async function getAuthToken() {
+          const dbName = 'notebook-examples';
+          const storeName = 'oauth';
+          const keyName = 'auth_token';
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, 1);
+            request.onupgradeneeded = event => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'id' });
+              }
+            };
+            request.onerror = event => reject("Error opening database " + dbName + ": " + event);
+            request.onsuccess = event => {
+              const db = event.target.result;
+              const tx = db.transaction(storeName, 'readonly');
+              const store = tx.objectStore(storeName);
+              const getRequest = store.get(keyName);
+              getRequest.onsuccess = () => resolve(getRequest.result);
+              getRequest.onerror = event => reject("Missing data "
+                + dbName + ":" + storeName + ":" + keyName + ": " + event);
+            };
+          });
+        }
+        """
+        )
+        tokenRecord = await js.getAuthToken()
+        token = tokenRecord.token if tokenRecord and tokenRecord.token else None
+        return token
+
+    async def get_accounts(token):
+        # Example API request to list available Cloudflare accounts
+        token = token or await get_token()
+        res = requests.get(
+            f"{proxy}/client/v4/accounts",
+            headers={"Authorization": f"Bearer {token}"},
+        ).json()
+        return res.get("result", []) or []
+
+    def login():
+        # Fetch and return the login form HTML from marimo public folder
+        html_path = f"{mo.notebook_location()}/public/login"
+        with urllib.request.urlopen(html_path) as response:
+            html = response.read().decode()
+        return html
+
+    # Start Login Form
+    mo.iframe(login(), height="1px")
+    return None
+
+
+##################
+# Notebook Cells #
+##################
+
+
+@app.cell()
+async def _(mo):
+    # 1) After login, Run ▶ this cell to get your API token and accounts
+    # 2) Select a specific Cloudflare account below
+    # 3) Start coding!
+    token = await get_token()
+    accounts = await get_accounts(token)
+    radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
+    return token, accounts, radio
+
+
+@app.cell(hide_code=True)
+def _(token, accounts, radio, mo):
+    # Run ▶ this cell to select a specific Cloudflare account
+    account_name = radio.value
+    account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
+    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
+    return
 
 
 @app.cell
 def _():
     import altair as alt
     from datetime import datetime
-    import marimo as mo
     import boto3
     import json
     import pandas as pd
-    import requests
-    return alt, boto3, datetime, json, mo, pd, requests
+
+    return alt, boto3, datetime, json, pd
 
 
 @app.cell
@@ -78,6 +179,7 @@ def _():
                 val /= 1000
             else:
                 return f"{round(val, 2)}{suffix}".strip()
+
     return readable_byte_vals, readable_numbers
 
 
@@ -165,7 +267,9 @@ def _(json_object_rank_data, pd):
     if json_object_rank_data["errors"] is None:
         # Process results for standard buckets
         _rows_standard = []
-        for _entry in json_object_rank_data["data"]["viewer"]["accounts"][0]["standard"]:
+        for _entry in json_object_rank_data["data"]["viewer"]["accounts"][0][
+            "standard"
+        ]:
             _curr_row = dict(
                 bucket=_entry["dimensions"]["bucketName"],
                 objects=_entry["max"]["objectCount"],
@@ -183,7 +287,9 @@ def _(json_object_rank_data, pd):
             _rows_ia.append(_curr_row)
         df_top_objects_ia = pd.DataFrame(_rows_ia)
     else:
-        _error_msg = "\n - ".join([el["message"] for el in json_object_rank_data["errors"]])
+        _error_msg = "\n - ".join(
+            [el["message"] for el in json_object_rank_data["errors"]]
+        )
         print(f"Obtained the following errors:\n - {_error_msg}")
         raise
     return df_top_objects_ia, df_top_objects_standard
@@ -322,29 +428,39 @@ def _(
 
 @app.cell
 def _(json_size_rank_data, pd, readable_byte_vals):
-    if json_size_rank_data['errors'] is None:
+    if json_size_rank_data["errors"] is None:
         # Process results for standard buckets
         _rows_standard = []
-        for _entry in json_size_rank_data['data']['viewer']['accounts'][0]['standard']:
-            _curr_row = dict(bucket=_entry['dimensions']['bucketName'],
-                             size=_entry['max']['payloadSize'])
+        for _entry in json_size_rank_data["data"]["viewer"]["accounts"][0]["standard"]:
+            _curr_row = dict(
+                bucket=_entry["dimensions"]["bucketName"],
+                size=_entry["max"]["payloadSize"],
+            )
             _rows_standard.append(_curr_row)
         df_top_size_standard = pd.DataFrame(_rows_standard)
-        df_top_size_standard['size_gb'] = df_top_size_standard['size'] / 1e9
-        df_top_size_standard['size_readable'] = df_top_size_standard['size'].apply(lambda x: readable_byte_vals(x))
+        df_top_size_standard["size_gb"] = df_top_size_standard["size"] / 1e9
+        df_top_size_standard["size_readable"] = df_top_size_standard["size"].apply(
+            lambda x: readable_byte_vals(x)
+        )
 
         # Process results for infrequent access buckets
         _rows_ia = []
-        for _entry in json_size_rank_data['data']['viewer']['accounts'][0]['ia']:
-            _curr_row = dict(bucket=_entry['dimensions']['bucketName'],
-                             size=_entry['max']['payloadSize'])
+        for _entry in json_size_rank_data["data"]["viewer"]["accounts"][0]["ia"]:
+            _curr_row = dict(
+                bucket=_entry["dimensions"]["bucketName"],
+                size=_entry["max"]["payloadSize"],
+            )
             _rows_ia.append(_curr_row)
         df_top_size_ia = pd.DataFrame(_rows_ia)
-        df_top_size_ia['size_gb'] = df_top_size_ia['size'] / 1e9
-        df_top_size_ia['size_readable'] = df_top_size_ia['size'].apply(lambda x: readable_byte_vals(x))
+        df_top_size_ia["size_gb"] = df_top_size_ia["size"] / 1e9
+        df_top_size_ia["size_readable"] = df_top_size_ia["size"].apply(
+            lambda x: readable_byte_vals(x)
+        )
     else:
-        _error_msg = '\n - '.join([el['message'] for el in json_size_rank_data['errors']])
-        print(f'Obtained the following errors:\n - {_error_msg}')
+        _error_msg = "\n - ".join(
+            [el["message"] for el in json_size_rank_data["errors"]]
+        )
+        print(f"Obtained the following errors:\n - {_error_msg}")
         raise
     return df_top_size_ia, df_top_size_standard
 
@@ -562,48 +678,68 @@ def _(
 
 @app.cell
 def _(json_request_rank_data, pd, readable_numbers):
-    if json_request_rank_data['errors'] is None:
+    if json_request_rank_data["errors"] is None:
         # Store everything under the same dataframe, long format
         _rows = []
 
         # Operations A - standard
-        for _entry in json_request_rank_data['data']['viewer']['accounts'][0]['classAOpsStandard']:
-            _curr_row = dict(bucket=_entry['dimensions']['bucketName'],
-                             storage_class=_entry['dimensions']['storageClass'],
-                             operation_type='A',
-                             requests=_entry['sum']['requests'])
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
+            "classAOpsStandard"
+        ]:
+            _curr_row = dict(
+                bucket=_entry["dimensions"]["bucketName"],
+                storage_class=_entry["dimensions"]["storageClass"],
+                operation_type="A",
+                requests=_entry["sum"]["requests"],
+            )
             _rows.append(_curr_row)
 
         # Operations A - infrequent access
-        for _entry in json_request_rank_data['data']['viewer']['accounts'][0]['classAOpsIA']:
-            _curr_row = dict(bucket=_entry['dimensions']['bucketName'],
-                             storage_class=_entry['dimensions']['storageClass'],
-                             operation_type='A',
-                             requests=_entry['sum']['requests'])
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
+            "classAOpsIA"
+        ]:
+            _curr_row = dict(
+                bucket=_entry["dimensions"]["bucketName"],
+                storage_class=_entry["dimensions"]["storageClass"],
+                operation_type="A",
+                requests=_entry["sum"]["requests"],
+            )
             _rows.append(_curr_row)
 
         # Operations B - standard
-        for _entry in json_request_rank_data['data']['viewer']['accounts'][0]['classBOpsStandard']:
-            _curr_row = dict(bucket=_entry['dimensions']['bucketName'],
-                             storage_class=_entry['dimensions']['storageClass'],
-                             operation_type='B',
-                             requests=_entry['sum']['requests'])
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
+            "classBOpsStandard"
+        ]:
+            _curr_row = dict(
+                bucket=_entry["dimensions"]["bucketName"],
+                storage_class=_entry["dimensions"]["storageClass"],
+                operation_type="B",
+                requests=_entry["sum"]["requests"],
+            )
             _rows.append(_curr_row)
 
         # Operations B - infrequent access
-        for _entry in json_request_rank_data['data']['viewer']['accounts'][0]['classBOpsIA']:
-            _curr_row = dict(bucket=_entry['dimensions']['bucketName'],
-                             storage_class=_entry['dimensions']['storageClass'],
-                             operation_type='B',
-                             requests=_entry['sum']['requests'])
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
+            "classBOpsIA"
+        ]:
+            _curr_row = dict(
+                bucket=_entry["dimensions"]["bucketName"],
+                storage_class=_entry["dimensions"]["storageClass"],
+                operation_type="B",
+                requests=_entry["sum"]["requests"],
+            )
             _rows.append(_curr_row)
 
         df_top_requests = pd.DataFrame(_rows)
-        df_top_requests['requests_readable'] = df_top_requests['requests'].apply(lambda x: readable_numbers(x))
+        df_top_requests["requests_readable"] = df_top_requests["requests"].apply(
+            lambda x: readable_numbers(x)
+        )
 
     else:
-        _error_msg = '\n - '.join([el['message'] for el in json_request_rank_data['errors']])
-        print(f'Obtained the following errors:\n - {_error_msg}')
+        _error_msg = "\n - ".join(
+            [el["message"] for el in json_request_rank_data["errors"]]
+        )
+        print(f"Obtained the following errors:\n - {_error_msg}")
         raise
     return (df_top_requests,)
 
@@ -611,8 +747,10 @@ def _(json_request_rank_data, pd, readable_numbers):
 @app.cell
 def _(alt, datetime, df_top_requests, start_dt):
     _fig = None
-    _curr_view = df_top_requests.loc[(df_top_requests['storage_class'] == 'Standard')
-                                     & (df_top_requests['operation_type'] == 'A')]
+    _curr_view = df_top_requests.loc[
+        (df_top_requests["storage_class"] == "Standard")
+        & (df_top_requests["operation_type"] == "A")
+    ]
 
     if int(_curr_view["requests"].sum()) == 0:
         print("No data found for class A operations in standard buckets, skipping")
@@ -624,14 +762,20 @@ def _(alt, datetime, df_top_requests, start_dt):
             alt.Chart(_curr_view)
             .mark_bar()
             .encode(
-                alt.X("requests", title="Class A operations", scale=alt.Scale(type='symlog')),
+                alt.X(
+                    "requests",
+                    title="Class A operations",
+                    scale=alt.Scale(type="symlog"),
+                ),
                 alt.Y(
                     "bucket",
                     title="Bucket name",
                     sort=alt.EncodingSortField(field="requests", order="ascending"),
                 ),
-                tooltip=[alt.Tooltip("bucket", title='Bucket name'),
-                         alt.Tooltip("requests_readable", title='Requests')],
+                tooltip=[
+                    alt.Tooltip("bucket", title="Bucket name"),
+                    alt.Tooltip("requests_readable", title="Requests"),
+                ],
             )
             .properties(
                 title=alt.TitleParams(
@@ -649,8 +793,10 @@ def _(alt, datetime, df_top_requests, start_dt):
 @app.cell
 def _(alt, datetime, df_top_requests, start_dt):
     _fig = None
-    _curr_view = df_top_requests.loc[(df_top_requests['storage_class'] == 'Standard')
-                                     & (df_top_requests['operation_type'] == 'B')]
+    _curr_view = df_top_requests.loc[
+        (df_top_requests["storage_class"] == "Standard")
+        & (df_top_requests["operation_type"] == "B")
+    ]
 
     if int(_curr_view["requests"].sum()) == 0:
         print("No data found for class B operations in standard buckets, skipping")
@@ -662,14 +808,20 @@ def _(alt, datetime, df_top_requests, start_dt):
             alt.Chart(_curr_view)
             .mark_bar()
             .encode(
-                alt.X("requests", title="Class B operations", scale=alt.Scale(type='symlog')),
+                alt.X(
+                    "requests",
+                    title="Class B operations",
+                    scale=alt.Scale(type="symlog"),
+                ),
                 alt.Y(
                     "bucket",
                     title="Bucket name",
                     sort=alt.EncodingSortField(field="requests", order="ascending"),
                 ),
-                tooltip=[alt.Tooltip("bucket", title='Bucket name'),
-                         alt.Tooltip("requests_readable", title='Requests')],
+                tooltip=[
+                    alt.Tooltip("bucket", title="Bucket name"),
+                    alt.Tooltip("requests_readable", title="Requests"),
+                ],
             )
             .properties(
                 title=alt.TitleParams(
@@ -687,11 +839,15 @@ def _(alt, datetime, df_top_requests, start_dt):
 @app.cell
 def _(alt, datetime, df_top_requests, start_dt):
     _fig = None
-    _curr_view = df_top_requests.loc[(df_top_requests['storage_class'] == 'InfrequentAccess')
-                                     & (df_top_requests['operation_type'] == 'A')]
+    _curr_view = df_top_requests.loc[
+        (df_top_requests["storage_class"] == "InfrequentAccess")
+        & (df_top_requests["operation_type"] == "A")
+    ]
 
     if int(_curr_view["requests"].sum()) == 0:
-        print("No data found for class A operations in infrequent access buckets, skipping")
+        print(
+            "No data found for class A operations in infrequent access buckets, skipping"
+        )
     else:
         # For the chart subtitle
         _start_str = datetime.strptime(start_dt, "%Y-%m-%dT%H:00:00Z").date()
@@ -700,14 +856,20 @@ def _(alt, datetime, df_top_requests, start_dt):
             alt.Chart(_curr_view)
             .mark_bar()
             .encode(
-                alt.X("requests", title="Class A operations", scale=alt.Scale(type='symlog')),
+                alt.X(
+                    "requests",
+                    title="Class A operations",
+                    scale=alt.Scale(type="symlog"),
+                ),
                 alt.Y(
                     "bucket",
                     title="Bucket name",
                     sort=alt.EncodingSortField(field="requests", order="ascending"),
                 ),
-                tooltip=[alt.Tooltip("bucket", title='Bucket name'),
-                         alt.Tooltip("requests_readable", title='Requests')],
+                tooltip=[
+                    alt.Tooltip("bucket", title="Bucket name"),
+                    alt.Tooltip("requests_readable", title="Requests"),
+                ],
             )
             .properties(
                 title=alt.TitleParams(
@@ -725,11 +887,15 @@ def _(alt, datetime, df_top_requests, start_dt):
 @app.cell
 def _(alt, datetime, df_top_requests, start_dt):
     _fig = None
-    _curr_view = df_top_requests.loc[(df_top_requests['storage_class'] == 'InfrequentAccess')
-                                     & (df_top_requests['operation_type'] == 'B')]
+    _curr_view = df_top_requests.loc[
+        (df_top_requests["storage_class"] == "InfrequentAccess")
+        & (df_top_requests["operation_type"] == "B")
+    ]
 
     if int(_curr_view["requests"].sum()) == 0:
-        print("No data found for class B operations in infrequent access buckets, skipping")
+        print(
+            "No data found for class B operations in infrequent access buckets, skipping"
+        )
     else:
         # For the chart subtitle
         _start_str = datetime.strptime(start_dt, "%Y-%m-%dT%H:00:00Z").date()
@@ -738,14 +904,20 @@ def _(alt, datetime, df_top_requests, start_dt):
             alt.Chart(_curr_view)
             .mark_bar()
             .encode(
-                alt.X("requests", title="Class B operations", scale=alt.Scale(type='symlog')),
+                alt.X(
+                    "requests",
+                    title="Class B operations",
+                    scale=alt.Scale(type="symlog"),
+                ),
                 alt.Y(
                     "bucket",
                     title="Bucket name",
                     sort=alt.EncodingSortField(field="requests", order="ascending"),
                 ),
-                tooltip=[alt.Tooltip("bucket", title='Bucket name'),
-                         alt.Tooltip("requests_readable", title='Requests')],
+                tooltip=[
+                    alt.Tooltip("bucket", title="Bucket name"),
+                    alt.Tooltip("requests_readable", title="Requests"),
+                ],
             )
             .properties(
                 title=alt.TitleParams(
@@ -867,9 +1039,7 @@ def _(
             "actionStatus_in": _action_status,
             "AND": [{"datetime_geq": start_dt}],
         },
-        "storageFilter": {
-            "AND": [{"datetime_geq": start_dt}]
-        }
+        "storageFilter": {"AND": [{"datetime_geq": start_dt}]},
     }
 
     _resp_raw = requests.post(
@@ -884,48 +1054,56 @@ def _(
 
 @app.cell
 def _(json_metric_data, pd, readable_byte_vals):
-    if json_metric_data['errors'] is None:
+    if json_metric_data["errors"] is None:
         # Store everything request related under the same dataframe, long format
         # Storage is organized into a separate dataframe
         _rows = []
         _rows_storage = []
 
         # Requests
-        for _entry in json_metric_data['data']['viewer']['accounts'][0]['classAOps']:
-            _curr_row = dict(time=_entry['dimensions']['datetimeHour'],
-                             storage_class=_entry['dimensions']['storageClass'],
-                             operation_type='A',
-                             requests=_entry['sum']['requests'])
+        for _entry in json_metric_data["data"]["viewer"]["accounts"][0]["classAOps"]:
+            _curr_row = dict(
+                time=_entry["dimensions"]["datetimeHour"],
+                storage_class=_entry["dimensions"]["storageClass"],
+                operation_type="A",
+                requests=_entry["sum"]["requests"],
+            )
             _rows.append(_curr_row)
 
-        for _entry in json_metric_data['data']['viewer']['accounts'][0]['classBOps']:
-            _curr_row = dict(time=_entry['dimensions']['datetimeHour'],
-                             storage_class=_entry['dimensions']['storageClass'],
-                             operation_type='B',
-                             requests=_entry['sum']['requests'])
+        for _entry in json_metric_data["data"]["viewer"]["accounts"][0]["classBOps"]:
+            _curr_row = dict(
+                time=_entry["dimensions"]["datetimeHour"],
+                storage_class=_entry["dimensions"]["storageClass"],
+                operation_type="B",
+                requests=_entry["sum"]["requests"],
+            )
             _rows.append(_curr_row)
         df_metric_requests = pd.DataFrame(_rows)
-        df_metric_requests['time'] = pd.to_datetime(df_metric_requests['time'],
-                                                    format='%Y-%m-%dT%H:%M:00Z').astype('datetime64[s]')
+        df_metric_requests["time"] = pd.to_datetime(
+            df_metric_requests["time"], format="%Y-%m-%dT%H:%M:00Z"
+        ).astype("datetime64[s]")
 
         # Storage
-        for _entry in json_metric_data['data']['viewer']['accounts'][0]['storage']:
-            _curr_row = dict(time=_entry['dimensions']['datetimeHour'],
-                             storage_class=_entry['dimensions']['storageClass'],
-                             payload_size=_entry['max']['payloadSize'],
-                             metadata_size=_entry['max']['metadataSize'])
+        for _entry in json_metric_data["data"]["viewer"]["accounts"][0]["storage"]:
+            _curr_row = dict(
+                time=_entry["dimensions"]["datetimeHour"],
+                storage_class=_entry["dimensions"]["storageClass"],
+                payload_size=_entry["max"]["payloadSize"],
+                metadata_size=_entry["max"]["metadataSize"],
+            )
             _rows_storage.append(_curr_row)
         df_metric_storage = pd.DataFrame(_rows_storage)
-        df_metric_storage['time'] = pd.to_datetime(df_metric_storage['time'],
-                                                   format='%Y-%m-%dT%H:%M:00Z').astype('datetime64[s]')
+        df_metric_storage["time"] = pd.to_datetime(
+            df_metric_storage["time"], format="%Y-%m-%dT%H:%M:00Z"
+        ).astype("datetime64[s]")
         df_metric_storage["payload_size_gb"] = df_metric_storage["payload_size"] / 1e9
-        df_metric_storage["payload_size_readable"] = df_metric_storage["payload_size"].apply(
-            lambda x: readable_byte_vals(x)
-        )
+        df_metric_storage["payload_size_readable"] = df_metric_storage[
+            "payload_size"
+        ].apply(lambda x: readable_byte_vals(x))
 
     else:
-        _error_msg = '\n - '.join([el['message'] for el in json_metric_data['errors']])
-        print(f'Obtained the following errors:\n - {_error_msg}')
+        _error_msg = "\n - ".join([el["message"] for el in json_metric_data["errors"]])
+        print(f"Obtained the following errors:\n - {_error_msg}")
         raise
     return df_metric_requests, df_metric_storage
 
@@ -935,13 +1113,15 @@ def _(alt, df_metric_requests):
     alt.Chart(df_metric_requests).transform_calculate(
         category="datum.storage_class + ' - Operation class ' + datum.operation_type"
     ).mark_area().encode(
-        alt.X('time:T', title='Time'),
-        alt.Y('requests:Q', title='Summed requests'),
-        alt.Color('category:N', title='Storage type - Operation class'),
-        tooltip=[alt.Tooltip('time', title='Time', format='%b %d, %Y %H:%M'),
-                 alt.Tooltip('storage_class:N', title='Storage type'),
-                 alt.Tooltip('operation_type:N', title='Operation class'),
-                 alt.Tooltip('requests', title='Requests')],
+        alt.X("time:T", title="Time"),
+        alt.Y("requests:Q", title="Summed requests"),
+        alt.Color("category:N", title="Storage type - Operation class"),
+        tooltip=[
+            alt.Tooltip("time", title="Time", format="%b %d, %Y %H:%M"),
+            alt.Tooltip("storage_class:N", title="Storage type"),
+            alt.Tooltip("operation_type:N", title="Operation class"),
+            alt.Tooltip("requests", title="Requests"),
+        ],
     ).properties(
         title=alt.TitleParams("R2 storage usage over time"),
         height=350,
@@ -953,12 +1133,14 @@ def _(alt, df_metric_requests):
 @app.cell
 def _(alt, df_metric_storage):
     alt.Chart(df_metric_storage).mark_line().encode(
-        alt.X('time:T', title='Time'),
-        alt.Y('payload_size_gb:Q', title='Object storage (GB)'),
-        alt.Color('storage_class:N', title='Storage type'),
-        tooltip=[alt.Tooltip('time', title='Time', format='%b %d, %Y %H:%M'),
-                 alt.Tooltip('storage_class:N', title='Storage type'),
-                 alt.Tooltip('payload_size_readable', title='Object storage')],
+        alt.X("time:T", title="Time"),
+        alt.Y("payload_size_gb:Q", title="Object storage (GB)"),
+        alt.Color("storage_class:N", title="Storage type"),
+        tooltip=[
+            alt.Tooltip("time", title="Time", format="%b %d, %Y %H:%M"),
+            alt.Tooltip("storage_class:N", title="Storage type"),
+            alt.Tooltip("payload_size_readable", title="Object storage"),
+        ],
     ).properties(
         title=alt.TitleParams("R2 storage space over time"),
         height=350,

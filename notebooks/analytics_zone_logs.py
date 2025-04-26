@@ -1,7 +1,109 @@
 import marimo
 
-__generated_with = "0.11.2"
-app = marimo.App(width="medium")
+__generated_with = "0.13.2"
+
+app = marimo.App(
+    width="full",
+    auto_download=["ipynb", "html"],
+    app_title="Cloudflare Notebook",
+)
+
+####################
+# Helper Functions #
+####################
+
+# Help function init stubs
+get_token = get_accounts = login = None
+
+
+@app.cell(hide_code=True)
+async def _():
+    # Helper Functions
+    import marimo as mo
+    import js
+    import requests
+    import urllib
+
+    proxy = "https://examples-api-proxy.notebooks.cloudflare.com"
+
+    async def get_token():
+        # Retrieve the token from IndexedDB
+        js.eval(
+            """
+        async function getAuthToken() {
+          const dbName = 'notebook-examples';
+          const storeName = 'oauth';
+          const keyName = 'auth_token';
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, 1);
+            request.onupgradeneeded = event => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'id' });
+              }
+            };
+            request.onerror = event => reject("Error opening database " + dbName + ": " + event);
+            request.onsuccess = event => {
+              const db = event.target.result;
+              const tx = db.transaction(storeName, 'readonly');
+              const store = tx.objectStore(storeName);
+              const getRequest = store.get(keyName);
+              getRequest.onsuccess = () => resolve(getRequest.result);
+              getRequest.onerror = event => reject("Missing data "
+                + dbName + ":" + storeName + ":" + keyName + ": " + event);
+            };
+          });
+        }
+        """
+        )
+        tokenRecord = await js.getAuthToken()
+        token = tokenRecord.token if tokenRecord and tokenRecord.token else None
+        return token
+
+    async def get_accounts(token):
+        # Example API request to list available Cloudflare accounts
+        token = token or await get_token()
+        res = requests.get(
+            f"{proxy}/client/v4/accounts",
+            headers={"Authorization": f"Bearer {token}"},
+        ).json()
+        return res.get("result", []) or []
+
+    def login():
+        # Fetch and return the login form HTML from marimo public folder
+        html_path = f"{mo.notebook_location()}/public/login"
+        with urllib.request.urlopen(html_path) as response:
+            html = response.read().decode()
+        return html
+
+    # Start Login Form
+    mo.iframe(login(), height="1px")
+    return None
+
+
+##################
+# Notebook Cells #
+##################
+
+
+@app.cell()
+async def _(mo):
+    # 1) After login, Run ▶ this cell to get your API token and accounts
+    # 2) Select a specific Cloudflare account below
+    # 3) Start coding!
+    token = await get_token()
+    accounts = await get_accounts(token)
+    radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
+    return token, accounts, radio
+
+
+@app.cell(hide_code=True)
+def _(token, accounts, radio, mo):
+    # Run ▶ this cell to select a specific Cloudflare account
+    account_name = radio.value
+    account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
+    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
+    return
 
 
 @app.cell
@@ -9,10 +111,9 @@ def _():
     import altair as alt
     from datetime import datetime, timedelta
     import json
-    import marimo as mo
     import pandas as pd
-    import requests
-    return alt, datetime, json, mo, pd, requests, timedelta
+
+    return alt, datetime, json, pd, timedelta
 
 
 @app.cell
@@ -44,17 +145,23 @@ def _():
 def _(HOSTNAME, TOKEN, json, pd, requests):
     # Endpoint to get list of zones
     # Warning: this will fetch at most 50 zones
-    main_call = f'{HOSTNAME}/client/v4/zones'
-    _api_resp = requests.get(main_call,
-                             headers={'Authorization': 'Bearer {}'.format(TOKEN)},
-                             params={'per_page': 50}).text
-    _res_raw = pd.DataFrame(json.loads(_api_resp)['result'])
+    main_call = f"{HOSTNAME}/client/v4/zones"
+    _api_resp = requests.get(
+        main_call,
+        headers={"Authorization": "Bearer {}".format(TOKEN)},
+        params={"per_page": 50},
+    ).text
+    _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
 
     # Clean columns
-    account_zones = _res_raw[['id', 'name', 'status', 'paused', 'plan', 'modified_on']].copy()
-    account_zones['plan_name'] = account_zones['plan'].apply(lambda x: x['name'])
-    account_zones = account_zones.drop(columns=['plan'])[['name', 'id', 'plan_name', 'status', 'paused', 'modified_on']]
-    account_zones = account_zones.sort_values('name')
+    account_zones = _res_raw[
+        ["id", "name", "status", "paused", "plan", "modified_on"]
+    ].copy()
+    account_zones["plan_name"] = account_zones["plan"].apply(lambda x: x["name"])
+    account_zones = account_zones.drop(columns=["plan"])[
+        ["name", "id", "plan_name", "status", "paused", "modified_on"]
+    ]
+    account_zones = account_zones.sort_values("name")
     return account_zones, main_call
 
 
@@ -85,18 +192,18 @@ def _(mo):
 @app.cell
 def _(datetime, timedelta):
     # Choose zone tag (id) to obtain data from, using the table above
-    zone_tag = '<your-zone-tag>'
+    zone_tag = "<your-zone-tag>"
 
     # Establish time interval to last 24 hours
     curr_dt = datetime.now().replace(second=0, microsecond=0)
-    end_dt = curr_dt.strftime('%Y-%m-%dT%H:%M:00Z')
-    start_dt = (curr_dt - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:00Z')
+    end_dt = curr_dt.strftime("%Y-%m-%dT%H:%M:00Z")
+    start_dt = (curr_dt - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:00Z")
     return curr_dt, end_dt, start_dt, zone_tag
 
 
 @app.cell
 def _(HOSTNAME, TOKEN, end_dt, json, requests, start_dt, zone_tag):
-    _QUERY_STR = '''
+    _QUERY_STR = """
     query GetZoneAnalytics($zoneTag: string, $since: string, $until: string) {
       viewer {
         zones(filter: {zoneTag: $zoneTag}) {
@@ -158,15 +265,14 @@ def _(HOSTNAME, TOKEN, end_dt, json, requests, start_dt, zone_tag):
         }
       }
     }
-    '''
-    _QUERY_VARIABLES = {"zoneTag": zone_tag,
-                        "since": start_dt,
-                        "until": end_dt
-                        }
+    """
+    _QUERY_VARIABLES = {"zoneTag": zone_tag, "since": start_dt, "until": end_dt}
 
-    _resp_raw = requests.post(f'{HOSTNAME}/client/v4/graphql',
-                              headers={'Authorization': 'Bearer {}'.format(TOKEN)},
-                              json={'query': _QUERY_STR, 'variables': _QUERY_VARIABLES})
+    _resp_raw = requests.post(
+        f"{HOSTNAME}/client/v4/graphql",
+        headers={"Authorization": "Bearer {}".format(TOKEN)},
+        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
+    )
 
     json_analytics = json.loads(_resp_raw.text)
     return (json_analytics,)
@@ -197,23 +303,28 @@ def _(json_analytics, pd):
     df_status_code = pd.DataFrame()
 
     # Format response code data into a DataFrame with [time - typename - response code - requests]
-    for j in range(len(json_analytics['data']['viewer']['zones'][0]['zones'])):
-        _temp_row_ts = json_analytics['data']['viewer']['zones'][0]['zones'][j]['dimensions']['timeslot']
+    for j in range(len(json_analytics["data"]["viewer"]["zones"][0]["zones"])):
+        _temp_row_ts = json_analytics["data"]["viewer"]["zones"][0]["zones"][j][
+            "dimensions"
+        ]["timeslot"]
         _temp_row = pd.DataFrame(
-            json_analytics['data']['viewer']['zones'][0]['zones'][j]['sum']['responseStatusMap']
+            json_analytics["data"]["viewer"]["zones"][0]["zones"][j]["sum"][
+                "responseStatusMap"
+            ]
         )
-        _temp_row['time'] = _temp_row_ts
+        _temp_row["time"] = _temp_row_ts
         df_status_code = pd.concat([df_status_code, _temp_row])
 
-    df_status_code['time'] = pd.to_datetime(df_status_code['time'],
-                                            format='%Y-%m-%dT%H:%M:00Z').astype('datetime64[s]')
+    df_status_code["time"] = pd.to_datetime(
+        df_status_code["time"], format="%Y-%m-%dT%H:%M:00Z"
+    ).astype("datetime64[s]")
 
-    df_status_code = df_status_code.groupby(['time', 'key']).agg({
-        'requests': 'sum'
-    }).reset_index()
+    df_status_code = (
+        df_status_code.groupby(["time", "key"]).agg({"requests": "sum"}).reset_index()
+    )
     # For now, we do not want status codes to be interpreted as integers
     # (tends to affect charts)
-    df_status_code['key'] = df_status_code['key'].astype(str)
+    df_status_code["key"] = df_status_code["key"].astype(str)
     return df_status_code, j
 
 
@@ -222,21 +333,28 @@ def _(df_status_code):
     # Select number of status codes to show in summary
     TOP_STATUS_CODES = 10
 
-    df_status_summary = df_status_code.groupby('key').agg({
-        'requests': 'sum'
-    }).reset_index()
+    df_status_summary = (
+        df_status_code.groupby("key").agg({"requests": "sum"}).reset_index()
+    )
 
     # Rename non-top entries into the "Other" label
-    df_status_summary.loc[df_status_summary['requests'].rank(ascending=False) > TOP_STATUS_CODES,
-                          'key'] = 'Other'
+    df_status_summary.loc[
+        df_status_summary["requests"].rank(ascending=False) > TOP_STATUS_CODES, "key"
+    ] = "Other"
 
     # The "Other" label must be aggregated
-    df_status_summary = df_status_summary.groupby('key').agg({
-        'requests': 'sum'
-    }).reset_index().sort_values('requests', ascending=False).reset_index(drop=True)
+    df_status_summary = (
+        df_status_summary.groupby("key")
+        .agg({"requests": "sum"})
+        .reset_index()
+        .sort_values("requests", ascending=False)
+        .reset_index(drop=True)
+    )
 
     # Percentage out of all requests
-    df_status_summary['share_requests'] = df_status_summary['requests'] / df_status_summary['requests'].sum() * 100
+    df_status_summary["share_requests"] = (
+        df_status_summary["requests"] / df_status_summary["requests"].sum() * 100
+    )
     return TOP_STATUS_CODES, df_status_summary
 
 
@@ -248,12 +366,20 @@ def _(df_status_summary):
 
 @app.cell
 def _(alt, df_status_summary):
-    alt.Chart(df_status_summary, title='Requests by HTTP status code').mark_bar().encode(
-        alt.X('share_requests:Q',
-              title='Share of requests').axis(labelExpr='datum.value + "%"'),
-        alt.Y('key:O',
-              title='HTTP status code', sort=alt.EncodingSortField(field='share_requests', order='ascending'))
-    ).properties(height=400, width=500)
+    alt.Chart(
+        df_status_summary, title="Requests by HTTP status code"
+    ).mark_bar().encode(
+        alt.X("share_requests:Q", title="Share of requests").axis(
+            labelExpr='datum.value + "%"'
+        ),
+        alt.Y(
+            "key:O",
+            title="HTTP status code",
+            sort=alt.EncodingSortField(field="share_requests", order="ascending"),
+        ),
+    ).properties(
+        height=400, width=500
+    )
     return
 
 
@@ -300,7 +426,7 @@ def _(
     start_dt,
     zone_tag,
 ):
-    _QUERY_STR = '''
+    _QUERY_STR = """
     query GetZoneTopNs {
       viewer {
         scope: zones(filter: {zoneTag: $zoneTag}) {
@@ -392,19 +518,24 @@ def _(
         }
       }
     }
-    '''
-    _QUERY_VARIABLES = {"zoneTag": zone_tag,
-                        "filter": {"AND": [
-                            {"datetime_geq": start_dt,
-                             "datetime_leq": end_dt},
-                            {"requestSource": "eyeball"},
-                            {"edgeResponseStatus": HTTP_STATUS_CODE}
-                        ]},
-                        "order": "count_DESC"}
+    """
+    _QUERY_VARIABLES = {
+        "zoneTag": zone_tag,
+        "filter": {
+            "AND": [
+                {"datetime_geq": start_dt, "datetime_leq": end_dt},
+                {"requestSource": "eyeball"},
+                {"edgeResponseStatus": HTTP_STATUS_CODE},
+            ]
+        },
+        "order": "count_DESC",
+    }
 
-    _resp_raw = requests.post(f'{HOSTNAME}/client/v4/graphql',
-                              headers={'Authorization': 'Bearer {}'.format(TOKEN)},
-                              json={'query': _QUERY_STR, 'variables': _QUERY_VARIABLES})
+    _resp_raw = requests.post(
+        f"{HOSTNAME}/client/v4/graphql",
+        headers={"Authorization": "Bearer {}".format(TOKEN)},
+        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
+    )
 
     json_dict_filtered = json.loads(_resp_raw.text)
     return (json_dict_filtered,)
@@ -416,11 +547,11 @@ def _(pd):
     # Attribute and counts will be in the "entry" and "count" values, respectively
     def top_n_from_json(json_dict, attribute):
         _all_rows = []
-        for el in (json_dict['data']['viewer']['scope'][0][attribute]):
-            _temp_row = {'entry': el['dimensions']['metric'],
-                         'count': el['count']}
+        for el in json_dict["data"]["viewer"]["scope"][0][attribute]:
+            _temp_row = {"entry": el["dimensions"]["metric"], "count": el["count"]}
             _all_rows.append(_temp_row)
         return pd.DataFrame(_all_rows)
+
     return (top_n_from_json,)
 
 
@@ -443,7 +574,7 @@ def _(mo):
 
 @app.cell
 def _(json_dict_filtered, top_n_from_json):
-    top_n_from_json(json_dict_filtered, 'countries')
+    top_n_from_json(json_dict_filtered, "countries")
     return
 
 
@@ -455,7 +586,7 @@ def _(mo):
 
 @app.cell
 def _(json_dict_filtered, top_n_from_json):
-    top_n_from_json(json_dict_filtered, 'topHosts')
+    top_n_from_json(json_dict_filtered, "topHosts")
     return
 
 
@@ -467,7 +598,7 @@ def _(mo):
 
 @app.cell
 def _(json_dict_filtered, top_n_from_json):
-    top_n_from_json(json_dict_filtered, 'topPaths')
+    top_n_from_json(json_dict_filtered, "topPaths")
     return
 
 
