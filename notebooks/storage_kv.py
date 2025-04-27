@@ -12,7 +12,7 @@ app = marimo.App(
 # Helper Functions #
 ####################
 
-# Help function init stubs
+# Helper function stubs
 get_token = get_accounts = login = None
 
 
@@ -81,9 +81,9 @@ async def _():
     return None
 
 
-##################
-# Notebook Cells #
-##################
+###############
+# Login Cells #
+###############
 
 
 @app.cell()
@@ -104,6 +104,11 @@ def _(token, accounts, radio, mo):
     account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
     mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
     return
+
+
+##################
+# Notebook Cells #
+##################
 
 
 @app.cell
@@ -140,11 +145,10 @@ def _(mo):
 
 
 @app.cell
-def _(datetime, timedelta):
-    CF_ACCOUNT_TAG = "<your-account-tag>"
-    CF_API_TOKEN = "<your-token>"
-
-    HOSTNAME = "https://api.cloudflare.com/"
+def _(account_id, token, proxy, datetime, timedelta):
+    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
 
     # Establish time interval to last 2 weeks (trimmed to day)
     curr_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)

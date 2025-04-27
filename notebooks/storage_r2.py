@@ -12,7 +12,7 @@ app = marimo.App(
 # Helper Functions #
 ####################
 
-# Help function init stubs
+# Helper function stubs
 get_token = get_accounts = login = None
 
 
@@ -81,9 +81,9 @@ async def _():
     return None
 
 
-##################
-# Notebook Cells #
-##################
+###############
+# Login Cells #
+###############
 
 
 @app.cell()
@@ -104,6 +104,11 @@ def _(token, accounts, radio, mo):
     account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
     mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
     return
+
+
+##################
+# Notebook Cells #
+##################
 
 
 @app.cell
@@ -135,16 +140,15 @@ def _(mo):
 
 
 @app.cell
-def _():
-    CF_ACCOUNT_TAG = "<your-account-tag>"
+def _(account_id, token, proxy):
+    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
     R2_TOKEN = "<your-r2-token>"
     R2_SECRET = "<your-r2-secret>"
-    CF_API_TOKEN = "<your-token>"
-
     ENDPOINT = f"https://{CF_ACCOUNT_TAG}.r2.cloudflarestorage.com"
 
     # API calls
-    HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"
     return (
         CF_ACCOUNT_TAG,
         CF_API_TOKEN,

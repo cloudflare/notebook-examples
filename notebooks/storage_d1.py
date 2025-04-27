@@ -5,14 +5,14 @@ __generated_with = "0.13.2"
 app = marimo.App(
     width="full",
     auto_download=["ipynb", "html"],
-    app_title="Cloudflare Login",
+    app_title="Cloudflare Notebook",
 )
 
 ####################
 # Helper Functions #
 ####################
 
-# Help function init stubs
+# Helper function stubs
 get_token = get_accounts = login = None
 
 
@@ -81,9 +81,9 @@ async def _():
     return None
 
 
-##################
-# Notebook Cells #
-##################
+###############
+# Login Cells #
+###############
 
 
 @app.cell()
@@ -104,6 +104,11 @@ def _(token, accounts, radio, mo):
     account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
     mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
     return
+
+
+##################
+# Notebook Cells #
+##################
 
 
 @app.cell
@@ -139,13 +144,12 @@ def _(mo):
 
 
 @app.cell
-def _():
-    CF_ACCOUNT_TAG = "<your-account-tag>"
-    TOKEN = "<your-token>"
-
-    HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"
+def _(account_id, token, proxy):
+    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
     URL = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_TAG}/d1/database"
-    return CF_ACCOUNT_TAG, HOSTNAME, TOKEN, URL
+    return CF_ACCOUNT_TAG, HOSTNAME, CF_API_TOKEN, URL
 
 
 @app.cell
@@ -163,9 +167,9 @@ def _(mo):
 
 
 @app.cell
-def _(TOKEN, URL, pd, requests):
+def _(CF_API_TOKEN, URL, pd, requests):
     # Send GET query
-    api_resp = requests.get(URL, headers={"Authorization": "Bearer {}".format(TOKEN)})
+    api_resp = requests.get(URL, headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)})
 
     # Results handling
     api_resp_json = api_resp.json()
@@ -274,10 +278,10 @@ def _():
 
 
 @app.cell
-def _(CF_ACCOUNT_TAG, DATABASE_ID, TABLE_NAME, TOKEN, query_d1):
+def _(CF_ACCOUNT_TAG, DATABASE_ID, TABLE_NAME, CF_API_TOKEN, query_d1):
     _query = f"SELECT * FROM {TABLE_NAME} LIMIT 10;"
 
-    query_resp_raw = query_d1(CF_ACCOUNT_TAG, DATABASE_ID, TOKEN, _query)
+    query_resp_raw = query_d1(CF_ACCOUNT_TAG, DATABASE_ID, CF_API_TOKEN, _query)
     return (query_resp_raw,)
 
 

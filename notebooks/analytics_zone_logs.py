@@ -12,7 +12,7 @@ app = marimo.App(
 # Helper Functions #
 ####################
 
-# Help function init stubs
+# Helper function stubs
 get_token = get_accounts = login = None
 
 
@@ -81,9 +81,9 @@ async def _():
     return None
 
 
-##################
-# Notebook Cells #
-##################
+###############
+# Login Cells #
+###############
 
 
 @app.cell()
@@ -106,48 +106,19 @@ def _(token, accounts, radio, mo):
     return
 
 
-@app.cell
-def _():
-    import altair as alt
-    from datetime import datetime, timedelta
-    import json
-    import pandas as pd
-
-    return alt, datetime, json, pd, timedelta
+##################
+# Notebook Cells #
+##################
 
 
 @app.cell
-def _(mo):
-    mo.md(
-        """
-        # Zone logs use case
-
-        In this notebook, we will show a simple use case involving account zone information and traffic logs.
-
-        **Prerequisites:**<br>
-         - API token (see [here](https://developers.cloudflare.com/r2/api/s3/tokens/)
-          for info on how to create one);<br>
-         - At least one active zone.
-        """
-    )
-    return
-
-
-@app.cell
-def _(token, proxy):
-    TOKEN = token  # or a custom token from dash.cloudflare.com
-    HOSTNAME = proxy
-    return HOSTNAME, TOKEN
-
-
-@app.cell
-def _(HOSTNAME, TOKEN, json, pd, requests, account_id):
+def _(HOSTNAME, CF_API_TOKEN, json, pd, requests, account_id):
     # Endpoint to get list of zones belonging to the selected account
     # Warning: this will fetch at most 50 zones
     main_call = f"{HOSTNAME}/client/v4/zones"
     _api_resp = requests.get(
         main_call,
-        headers={"Authorization": "Bearer {}".format(TOKEN)},
+        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
         params={"per_page": 50, "account.id": account_id},
     ).text
     _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
@@ -202,7 +173,7 @@ def _(datetime, timedelta, account_zones):
 
 
 @app.cell
-def _(HOSTNAME, TOKEN, end_dt, json, requests, start_dt, zone_tag):
+def _(HOSTNAME, CF_API_TOKEN, end_dt, json, requests, start_dt, zone_tag):
     _QUERY_STR = """
     query GetZoneAnalytics($zoneTag: string, $since: string, $until: string) {
       viewer {
@@ -270,7 +241,7 @@ def _(HOSTNAME, TOKEN, end_dt, json, requests, start_dt, zone_tag):
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(TOKEN)},
+        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 
@@ -419,7 +390,7 @@ def _():
 def _(
     HOSTNAME,
     HTTP_STATUS_CODE,
-    TOKEN,
+    CF_API_TOKEN,
     end_dt,
     json,
     requests,
@@ -533,7 +504,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(TOKEN)},
+        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 

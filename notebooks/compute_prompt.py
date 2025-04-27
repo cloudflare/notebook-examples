@@ -12,7 +12,7 @@ app = marimo.App(
 # Helper Functions #
 ####################
 
-# Help function init stubs
+# Helper function stubs
 get_token = get_accounts = login = None
 
 
@@ -81,6 +81,31 @@ async def _():
     return None
 
 
+###############
+# Login Cells #
+###############
+
+
+@app.cell()
+async def _(mo):
+    # 1) After login, Run ▶ this cell to get your API token and accounts
+    # 2) Select a specific Cloudflare account below
+    # 3) Start coding!
+    token = await get_token()
+    accounts = await get_accounts(token)
+    radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
+    return token, accounts, radio
+
+
+@app.cell(hide_code=True)
+def _(token, accounts, radio, mo):
+    # Run ▶ this cell to select a specific Cloudflare account
+    account_name = radio.value
+    account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
+    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
+    return
+
+
 ##################
 # Notebook Cells #
 ##################
@@ -107,15 +132,11 @@ def _(token, accounts, radio, mo):
 
 
 @app.cell
-def _():
-    # Find your account ID by logging into https://dash.cloudflare.com and selecting a website,
-    # then look for "Account ID" under the "API" section on the right-hand side of the screen.
-    CF_ACCOUNT_ID = "paste-your-account-id-here"
-
-    # Go to https://dash.cloudflare.com/profile/api-tokens and create a "Workers AI" token.
-    # Then paste it here, but do not share it with anyone else. It's a secret... 🤫
-    CF_API_TOKEN = "paste-your-api-token-here"
-    return CF_ACCOUNT_ID, CF_API_TOKEN
+def _(account_id, token, proxy):
+    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
+    return CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME
 
 
 @app.cell

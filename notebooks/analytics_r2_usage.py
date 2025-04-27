@@ -12,7 +12,7 @@ app = marimo.App(
 # Helper Functions #
 ####################
 
-# Help function init stubs
+# Helper function stubs
 get_token = get_accounts = login = None
 
 
@@ -81,9 +81,9 @@ async def _():
     return None
 
 
-##################
-# Notebook Cells #
-##################
+###############
+# Login Cells #
+###############
 
 
 @app.cell()
@@ -106,38 +106,9 @@ def _(token, accounts, radio, mo):
     return
 
 
-@app.cell
-def _():
-    import altair as alt
-    from datetime import datetime
-    import boto3
-    import json
-    import pandas as pd
-
-    return alt, boto3, datetime, json, pd
-
-
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
-        # R2 usage metrics
-
-        In this notebook, we will make use of the GraphQL endpoint in order to obtain usage metrics
-        related to an account's R2 buckets. This will involve the following:<br>
-         - Ranking buckets by number of objects, storage and operations<br>
-         - Plot overall account's usage of R2.
-
-        **Prerequisites:**<br>
-         - API token (see [here](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
-        for info on how to create one);<br>
-         - At least one active R2 bucket.
-
-        Relevant documentation:<br>
-         - [R2 metrics dev page](https://developers.cloudflare.com/r2/platform/metrics-analytics/)<br>
-        """
-    )
-    return
+##################
+# Notebook Cells #
+##################
 
 
 @app.cell
