@@ -349,7 +349,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 

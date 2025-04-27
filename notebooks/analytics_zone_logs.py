@@ -112,13 +112,45 @@ def _(token, accounts, radio, mo):
 
 
 @app.cell
+def _():
+    import altair as alt
+    from datetime import datetime, timedelta
+    import json
+    import pandas as pd
+    return alt, datetime, json, pd, timedelta
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        """
+        # Zone logs use case
+        In this notebook, we will show a simple use case involving account zone information and traffic logs.
+
+        **Prerequisites:**<br>
+         - API token (see [here](https://developers.cloudflare.com/r2/api/s3/tokens/)
+          for info on how to create one);<br>
+         - At least one active zone.
+        """
+    )
+
+
+@app.cell
+def _(account_id, token, proxy):
+    CF_ACCOUNT_ID = account_id
+    CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME
+
+
+@app.cell
 def _(HOSTNAME, CF_API_TOKEN, json, pd, requests, account_id):
     # Endpoint to get list of zones belonging to the selected account
     # Warning: this will fetch at most 50 zones
     main_call = f"{HOSTNAME}/client/v4/zones"
     _api_resp = requests.get(
         main_call,
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         params={"per_page": 50, "account.id": account_id},
     ).text
     _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
@@ -241,7 +273,7 @@ def _(HOSTNAME, CF_API_TOKEN, end_dt, json, requests, start_dt, zone_tag):
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 
@@ -504,7 +536,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 

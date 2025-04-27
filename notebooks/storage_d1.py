@@ -169,7 +169,7 @@ def _(mo):
 @app.cell
 def _(CF_API_TOKEN, URL, pd, requests):
     # Send GET query
-    api_resp = requests.get(URL, headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)})
+    api_resp = requests.get(URL, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
 
     # Results handling
     api_resp_json = api_resp.json()

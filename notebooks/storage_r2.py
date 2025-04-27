@@ -180,7 +180,7 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
     _api_resp = requests.get(
         _main_call,
         params={"per_page": 100},
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
     ).text
 
     r2_info = pd.DataFrame(json.loads(_api_resp)["result"]["buckets"])
@@ -211,7 +211,7 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, requests):
         f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/r2/buckets/{SELECTED_BUCKET}"
     )
     _api_resp = requests.get(
-        _main_call, headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)}
+        _main_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"}
     ).text
 
     json.loads(_api_resp)["result"]

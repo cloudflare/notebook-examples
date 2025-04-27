@@ -8,36 +8,43 @@ notebooks:
     description: "Get started with your first interactive notebook."
 
   # Analytics
-  - file: analytics_r2_usage.html
-    title: "Analytics: R2 Usage"
-    description: "Fetch and rank usage metrics for R2 storage and requests."
-
   - file: analytics_zone_logs.html
     title: "Analytics: Zone Logs Query"
     description: "Query zone analytics logs to extract insights."
 
-  # Compute & AI
+  # Compute
   - file: compute_ai.html
-    title: "Compute & AI: Workers AI"
+    title: "Compute: Workers AI"
     description: "Interact with Workers AI prompts and measure model usage."
 
   - file: compute_prompt.html
-    title: "Compute & AI: Workers AI Self Prompt"
+    title: "Compute: Workers AI Self Prompt"
     description: "Ask questions to a large language model running in Workers AI."
 
   - file: compute_workers.html
-    title: "Compute & AI: Worker Metrics Comparison"
+    title: "Compute: Worker Metrics Comparison"
     description: "Rank and compare Worker performance by requests, errors, and CPU time."
 
-  # Storage Quickstarts
+  # Marimo
+  - file: marimo_showcase.html
+    title: "Marimo: Showcase"
+    description: "Demo different features in Marimo, not specific to Cloudflare"
+
+  # Storage
+
+  # [TODO]
+  - file: analytics_r2_usage.html
+    title: "[TODO] Analytics: R2 Usage"
+    description: "Fetch and rank usage metrics for R2 storage and requests."
+
   - file: storage_d1.html
-    title: "Storage: D1 Quickstart"
+    title: "[TODO] Storage: D1 Quickstart"
     description: "Create, populate, and query a D1 database table."
 
   - file: storage_kv.html
-    title: "Storage: KV Usage Analytics"
+    title: "[TODO] Storage: KV Usage Analytics"
     description: "Fetch and rank request metrics for KV storage."
 
   - file: storage_r2.html
-    title: "Storage: R2 Quickstart"
+    title: "[TODO] Storage: R2 Quickstart"
     description: "List objects and download files from R2 storage."

@@ -112,6 +112,39 @@ def _(token, accounts, radio, mo):
 
 
 @app.cell
+def _():
+    import altair as alt
+    from datetime import datetime
+    import boto3
+    import json
+    import pandas as pd
+    return alt, boto3, datetime, json, pd
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        # R2 usage metrics
+        # Helper function stubs
+        get_token = get_accounts = login = None
+
+                In this notebook, we will make use of the GraphQL endpoint in order to obtain usage metrics
+                related to an account's R2 buckets. This will involve the following:<br>
+                - Ranking buckets by number of objects, storage and operations<br>
+                - Plot overall account's usage of R2.
+
+                **Prerequisites:**<br>
+                - API token (see [here](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
+                for info on how to create one);<br>
+                - At least one active R2 bucket.
+                Relevant documentation:<br>
+                - [R2 metrics dev page](https://developers.cloudflare.com/r2/platform/metrics-analytics/)<br>
+        """
+    )
+
+
+@app.cell
 def _(account_id, token, proxy):
     CF_ACCOUNT_ID = account_id
     CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
@@ -224,7 +257,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 
@@ -237,9 +270,7 @@ def _(json_object_rank_data, pd):
     if json_object_rank_data["errors"] is None:
         # Process results for standard buckets
         _rows_standard = []
-        for _entry in json_object_rank_data["data"]["viewer"]["accounts"][0][
-            "standard"
-        ]:
+        for _entry in json_object_rank_data["data"]["viewer"]["accounts"][0]["standard"]:
             _curr_row = dict(
                 bucket=_entry["dimensions"]["bucketName"],
                 objects=_entry["max"]["objectCount"],
@@ -257,9 +288,7 @@ def _(json_object_rank_data, pd):
             _rows_ia.append(_curr_row)
         df_top_objects_ia = pd.DataFrame(_rows_ia)
     else:
-        _error_msg = "\n - ".join(
-            [el["message"] for el in json_object_rank_data["errors"]]
-        )
+        _error_msg = "\n - ".join([el["message"] for el in json_object_rank_data["errors"]])
         print(f"Obtained the following errors:\n - {_error_msg}")
         raise
     return df_top_objects_ia, df_top_objects_standard
@@ -388,7 +417,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 
@@ -409,9 +438,7 @@ def _(json_size_rank_data, pd, readable_byte_vals):
             _rows_standard.append(_curr_row)
         df_top_size_standard = pd.DataFrame(_rows_standard)
         df_top_size_standard["size_gb"] = df_top_size_standard["size"] / 1e9
-        df_top_size_standard["size_readable"] = df_top_size_standard["size"].apply(
-            lambda x: readable_byte_vals(x)
-        )
+        df_top_size_standard["size_readable"] = df_top_size_standard["size"].apply(lambda x: readable_byte_vals(x))
 
         # Process results for infrequent access buckets
         _rows_ia = []
@@ -427,9 +454,7 @@ def _(json_size_rank_data, pd, readable_byte_vals):
             lambda x: readable_byte_vals(x)
         )
     else:
-        _error_msg = "\n - ".join(
-            [el["message"] for el in json_size_rank_data["errors"]]
-        )
+        _error_msg = "\n - ".join([el["message"] for el in json_size_rank_data["errors"]])
         print(f"Obtained the following errors:\n - {_error_msg}")
         raise
     return df_top_size_ia, df_top_size_standard
@@ -638,7 +663,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 
@@ -653,9 +678,7 @@ def _(json_request_rank_data, pd, readable_numbers):
         _rows = []
 
         # Operations A - standard
-        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
-            "classAOpsStandard"
-        ]:
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0]["classAOpsStandard"]:
             _curr_row = dict(
                 bucket=_entry["dimensions"]["bucketName"],
                 storage_class=_entry["dimensions"]["storageClass"],
@@ -665,9 +688,7 @@ def _(json_request_rank_data, pd, readable_numbers):
             _rows.append(_curr_row)
 
         # Operations A - infrequent access
-        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
-            "classAOpsIA"
-        ]:
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0]["classAOpsIA"]:
             _curr_row = dict(
                 bucket=_entry["dimensions"]["bucketName"],
                 storage_class=_entry["dimensions"]["storageClass"],
@@ -677,9 +698,7 @@ def _(json_request_rank_data, pd, readable_numbers):
             _rows.append(_curr_row)
 
         # Operations B - standard
-        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
-            "classBOpsStandard"
-        ]:
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0]["classBOpsStandard"]:
             _curr_row = dict(
                 bucket=_entry["dimensions"]["bucketName"],
                 storage_class=_entry["dimensions"]["storageClass"],
@@ -689,9 +708,7 @@ def _(json_request_rank_data, pd, readable_numbers):
             _rows.append(_curr_row)
 
         # Operations B - infrequent access
-        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0][
-            "classBOpsIA"
-        ]:
+        for _entry in json_request_rank_data["data"]["viewer"]["accounts"][0]["classBOpsIA"]:
             _curr_row = dict(
                 bucket=_entry["dimensions"]["bucketName"],
                 storage_class=_entry["dimensions"]["storageClass"],
@@ -706,9 +723,7 @@ def _(json_request_rank_data, pd, readable_numbers):
         )
 
     else:
-        _error_msg = "\n - ".join(
-            [el["message"] for el in json_request_rank_data["errors"]]
-        )
+        _error_msg = "\n - ".join([el["message"] for el in json_request_rank_data["errors"]])
         print(f"Obtained the following errors:\n - {_error_msg}")
         raise
     return (df_top_requests,)
@@ -815,9 +830,7 @@ def _(alt, datetime, df_top_requests, start_dt):
     ]
 
     if int(_curr_view["requests"].sum()) == 0:
-        print(
-            "No data found for class A operations in infrequent access buckets, skipping"
-        )
+        print("No data found for class A operations in infrequent access buckets, skipping")
     else:
         # For the chart subtitle
         _start_str = datetime.strptime(start_dt, "%Y-%m-%dT%H:00:00Z").date()
@@ -1014,7 +1027,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 

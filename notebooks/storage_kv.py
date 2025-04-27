@@ -199,7 +199,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 
@@ -232,7 +232,7 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
     _api_resp = requests.get(
         main_call,
         params={"per_page": 100},
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
     ).text
     kv_info = pd.DataFrame(json.loads(_api_resp)["result"])
 
@@ -249,7 +249,7 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
             _api_resp = requests.get(
                 main_call,
                 params={"per_page": 100, "page": _page},
-                headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+                headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
             ).text
             _curr_results = pd.DataFrame(json.loads(_api_resp)["result"])
             kv_info = pd.concat([kv_info, _curr_results])
@@ -494,7 +494,7 @@ def _(
 
     _resp_raw = requests.post(
         f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)},
+        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
         json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
     )
 
