@@ -141,11 +141,10 @@ def _(mo):
 
 
 @app.cell
-def _():
-    CF_ACCOUNT_TAG = "<your-account-tag>"
-    CF_API_TOKEN = "<your-token>"
-
-    HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"
+def _(account_id, token, proxy):
+    CF_ACCOUNT_TAG = account_id
+    CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy
     return CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME
 
 

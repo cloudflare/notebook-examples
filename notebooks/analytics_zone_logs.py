@@ -134,22 +134,21 @@ def _(mo):
 
 
 @app.cell
-def _():
-    TOKEN = "<your-token>"
-
-    HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"
+def _(token, proxy):
+    TOKEN = token  # or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy
     return HOSTNAME, TOKEN
 
 
 @app.cell
-def _(HOSTNAME, TOKEN, json, pd, requests):
-    # Endpoint to get list of zones
+def _(HOSTNAME, TOKEN, json, pd, requests, account_id):
+    # Endpoint to get list of zones belonging to the selected account
     # Warning: this will fetch at most 50 zones
     main_call = f"{HOSTNAME}/client/v4/zones"
     _api_resp = requests.get(
         main_call,
         headers={"Authorization": "Bearer {}".format(TOKEN)},
-        params={"per_page": 50},
+        params={"per_page": 50, "account.id": account_id},
     ).text
     _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
 
@@ -190,9 +189,10 @@ def _(mo):
 
 
 @app.cell
-def _(datetime, timedelta):
+def _(datetime, timedelta, account_zones):
     # Choose zone tag (id) to obtain data from, using the table above
-    zone_tag = "<your-zone-tag>"
+    zone_tag = account_zones["id"][0]
+    # Demo example: First zone from the list
 
     # Establish time interval to last 24 hours
     curr_dt = datetime.now().replace(second=0, microsecond=0)
