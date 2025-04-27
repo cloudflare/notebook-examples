@@ -145,11 +145,11 @@ def _(mo):
 
 @app.cell
 def _(account_id, token, proxy):
-    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
-    URL = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_TAG}/d1/database"
-    return CF_ACCOUNT_TAG, HOSTNAME, CF_API_TOKEN, URL
+    URL = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/d1/database"
+    return CF_ACCOUNT_ID, HOSTNAME, CF_API_TOKEN, URL
 
 
 @app.cell
@@ -278,10 +278,10 @@ def _():
 
 
 @app.cell
-def _(CF_ACCOUNT_TAG, DATABASE_ID, TABLE_NAME, CF_API_TOKEN, query_d1):
+def _(CF_ACCOUNT_ID, DATABASE_ID, TABLE_NAME, CF_API_TOKEN, query_d1):
     _query = f"SELECT * FROM {TABLE_NAME} LIMIT 10;"
 
-    query_resp_raw = query_d1(CF_ACCOUNT_TAG, DATABASE_ID, CF_API_TOKEN, _query)
+    query_resp_raw = query_d1(CF_ACCOUNT_ID, DATABASE_ID, CF_API_TOKEN, _query)
     return (query_resp_raw,)
 
 

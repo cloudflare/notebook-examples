@@ -141,16 +141,16 @@ def _(mo):
 
 @app.cell
 def _(account_id, token, proxy):
-    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
     R2_TOKEN = "<your-r2-token>"
     R2_SECRET = "<your-r2-secret>"
-    ENDPOINT = f"https://{CF_ACCOUNT_TAG}.r2.cloudflarestorage.com"
+    ENDPOINT = f"https://{CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
     # API calls
     return (
-        CF_ACCOUNT_TAG,
+        CF_ACCOUNT_ID,
         CF_API_TOKEN,
         ENDPOINT,
         HOSTNAME,
@@ -174,9 +174,9 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME, json, pd, requests):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
     # Endpoint to get buckets from an account
-    _main_call = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_TAG}/r2/buckets"
+    _main_call = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/r2/buckets"
     _api_resp = requests.get(
         _main_call,
         params={"per_page": 100},
@@ -202,13 +202,13 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME, json, requests):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, requests):
     # Select R2 bucket name (this impacts the rest of the notebook)
     SELECTED_BUCKET = "<your-bucket>"
 
     # Endpoint to get bucket info
     _main_call = (
-        f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_TAG}/r2/buckets/{SELECTED_BUCKET}"
+        f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/r2/buckets/{SELECTED_BUCKET}"
     )
     _api_resp = requests.get(
         _main_call, headers={"Authorization": "Bearer {}".format(CF_API_TOKEN)}

@@ -18,11 +18,11 @@ notebooks:
 
   # Compute & AI
   - file: compute_ai.html
-    title: "Compute & AI: Cloudflare AI Prompts"
+    title: "Compute & AI: Workers AI"
     description: "Interact with Workers AI prompts and measure model usage."
 
   - file: compute_prompt.html
-    title: "Compute & AI: Workers AI Prompt"
+    title: "Compute & AI: Workers AI Self Prompt"
     description: "Ask questions to a large language model running in Workers AI."
 
   - file: compute_workers.html

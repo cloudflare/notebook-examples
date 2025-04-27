@@ -143,10 +143,10 @@ def _(mo):
 
 @app.cell
 def _(account_id, token, proxy):
-    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
-    return CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME
 
 
 @app.cell
@@ -199,10 +199,10 @@ def _(mo):
 
 
 @app.cell
-def _(AIClient, CF_ACCOUNT_TAG, CF_API_TOKEN):
+def _(AIClient, CF_ACCOUNT_ID, CF_API_TOKEN):
     model_name = "@cf/meta/llama-3.1-8b-instruct"
 
-    ai_session = AIClient(CF_ACCOUNT_TAG, CF_API_TOKEN, model_name)
+    ai_session = AIClient(CF_ACCOUNT_ID, CF_API_TOKEN, model_name)
     return ai_session, model_name
 
 
@@ -314,7 +314,7 @@ def _(datetime, timedelta):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     end_dt,
@@ -342,7 +342,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "dateStart": start_dt,
         "dateEnd": end_dt,
     }

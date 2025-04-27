@@ -140,7 +140,7 @@ def _(mo):
 
 @app.cell
 def _(account_id, token, proxy, datetime, timedelta):
-    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
 
@@ -148,12 +148,12 @@ def _(account_id, token, proxy, datetime, timedelta):
     curr_dt = datetime.now().replace(minute=0, second=0, microsecond=0)
     end_dt = curr_dt.strftime("%Y-%m-%dT%H:00:00Z")
     start_dt = (curr_dt - timedelta(days=1)).strftime("%Y-%m-%dT%H:00:00Z")
-    return CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME, curr_dt, end_dt, start_dt
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, curr_dt, end_dt, start_dt
 
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     end_dt,
@@ -216,7 +216,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "filter": {"AND": [{"datetimeHour_leq": end_dt, "datetimeHour_geq": start_dt}]},
     }
 
@@ -397,7 +397,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     TOP_REQUESTS_WORKERS,
@@ -432,7 +432,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "datetimeStart": start_dt,
         "datetimeEnd": end_dt,
         "scriptNames": TOP_REQUESTS_WORKERS,
@@ -496,7 +496,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     TOP_DISCONNECTS_WORKERS,
@@ -534,7 +534,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "datetimeStart": start_dt,
         "datetimeEnd": end_dt,
         # Unique set of workers with most errors and disconnects
@@ -616,7 +616,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     TOP_CPU_TIME_WORKERS,
@@ -651,7 +651,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "datetimeStart": start_dt,
         "datetimeEnd": end_dt,
         "scriptNames": TOP_CPU_TIME_WORKERS,

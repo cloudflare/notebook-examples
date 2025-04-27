@@ -113,10 +113,10 @@ def _(token, accounts, radio, mo):
 
 @app.cell
 def _(account_id, token, proxy):
-    CF_ACCOUNT_TAG = account_id
+    CF_ACCOUNT_ID = account_id
     CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
     HOSTNAME = proxy
-    return CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME
 
 
 @app.cell
@@ -179,7 +179,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     TOP_N,
@@ -217,7 +217,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "limit": TOP_N,
         "queryStart": start_dt,
     }
@@ -343,7 +343,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     TOP_N,
@@ -381,7 +381,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "limit": TOP_N,
         "queryStart": start_dt,
     }
@@ -509,7 +509,7 @@ def _(alt, datetime, df_top_size_ia, start_dt):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     TOP_N,
@@ -608,7 +608,7 @@ def _(
     ]
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "limit": TOP_N,
         "classAOpsFilterStandard": {
             "actionType_in": _aops_actions,
@@ -910,7 +910,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     TOP_N,
@@ -997,7 +997,7 @@ def _(
     ]
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "limit": TOP_N,
         "classAOpsFilter": {
             "actionType_in": _aops_actions,

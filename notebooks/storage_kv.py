@@ -146,7 +146,7 @@ def _(mo):
 
 @app.cell
 def _(account_id, token, proxy, datetime, timedelta):
-    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
 
@@ -154,7 +154,7 @@ def _(account_id, token, proxy, datetime, timedelta):
     curr_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     end_dt = curr_dt.strftime("%Y-%m-%dT%H:00:00Z")
     start_dt = (curr_dt - timedelta(days=14)).strftime("%Y-%m-%dT%H:00:00Z")
-    return CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME, curr_dt, end_dt, start_dt
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, curr_dt, end_dt, start_dt
 
 
 @app.cell
@@ -165,7 +165,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     end_dt,
@@ -193,7 +193,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "filter": {"AND": [{"datetimeHour_leq": end_dt, "datetimeHour_geq": start_dt}]},
     }
 
@@ -222,13 +222,13 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME, json, pd, requests):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
     # Before processing the GraphQL results, we fetch the KV info first so we can merge the info after processing
     # If results are incomplete, this represents the total number of pages we request
     _MAX_PAGE_REQUESTS = 5
 
     # Endpoint to get all KV name and Ids
-    main_call = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_TAG}/storage/kv/namespaces"
+    main_call = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces"
     _api_resp = requests.get(
         main_call,
         params={"per_page": 100},
@@ -460,7 +460,7 @@ def _(mo):
 
 @app.cell
 def _(
-    CF_ACCOUNT_TAG,
+    CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
     end_dt,
@@ -488,7 +488,7 @@ def _(
     """
 
     _QUERY_VARIABLES = {
-        "accountTag": CF_ACCOUNT_TAG,
+        "accountTag": CF_ACCOUNT_ID,
         "filter": {"AND": [{"datetimeHour_leq": end_dt, "datetimeHour_geq": start_dt}]},
     }
 

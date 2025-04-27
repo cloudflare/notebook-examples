@@ -111,37 +111,16 @@ def _(token, accounts, radio, mo):
 ##################
 
 
-@app.cell()
-async def _(mo):
-    # 1) After login, Run ▶ this cell to get your API token and accounts
-    # 2) Select a specific Cloudflare account below
-    # 3) Start coding!
-    token = await get_token()
-    accounts = await get_accounts(token)
-    radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
-    return token, accounts, radio
-
-
-@app.cell(hide_code=True)
-def _(token, accounts, radio, mo):
-    # Run ▶ this cell to select a specific Cloudflare account
-    account_name = radio.value
-    account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
-    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
-    return
-
-
 @app.cell
 def _(account_id, token, proxy):
-    CF_ACCOUNT_TAG = account_id  # After login, selected from list above
+    CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
-    return CF_ACCOUNT_TAG, CF_API_TOKEN, HOSTNAME
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, mo):
-    import requests
+def _(mo, requests, CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME):
 
     WORKERS_AI_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 
@@ -150,7 +129,8 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, mo):
             return "**Please ask a question using the form above.** 👆"
 
         # For more details see: https://developers.cloudflare.com/workers-ai/get-started/rest-api/
-        url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/{WORKERS_AI_MODEL}"
+        # Account must have Workers AI enabled, such as "Edge Notebooks"
+        url = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/{WORKERS_AI_MODEL}"
         headers = {"Authorization": f"Bearer {CF_API_TOKEN}"}
 
         payload = {
@@ -182,7 +162,7 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, mo):
 @app.cell
 def _(mo, prompt, workers_ai_llm_request):
     answer = workers_ai_llm_request(prompt)
-    mo.md(answer)
+    mo.md(f"""{answer}""")
     return (answer,)
 
 
