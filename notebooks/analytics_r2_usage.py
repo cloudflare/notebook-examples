@@ -1,23 +1,13 @@
+
+
 import marimo
 
 __generated_with = "0.13.2"
-
-app = marimo.App(
-    width="full",
-    auto_download=["ipynb", "html"],
-    app_title="Cloudflare Notebook",
-)
-
-####################
-# Helper Functions #
-####################
-
-# Helper function stubs
-get_token = get_accounts = login = None
+app = marimo.App(width="full", app_title="Cloudflare Notebook")
 
 
 @app.cell(hide_code=True)
-async def _():
+def _():
     # Helper Functions
     import marimo as mo
     import js
@@ -78,47 +68,36 @@ async def _():
 
     # Start Login Form
     mo.iframe(login(), height="1px")
-    return None
+    return get_accounts, get_token, mo, proxy, requests
 
 
-###############
-# Login Cells #
-###############
-
-
-@app.cell()
-async def _(mo):
+@app.cell
+async def _(get_accounts, get_token, mo):
     # 1) After login, Run ▶ this cell to get your API token and accounts
     # 2) Select a specific Cloudflare account below
     # 3) Start coding!
     token = await get_token()
     accounts = await get_accounts(token)
     radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
-    return token, accounts, radio
+    return accounts, radio, token
 
 
 @app.cell(hide_code=True)
-def _(token, accounts, radio, mo):
+def _(accounts, mo, radio, token):
     # Run ▶ this cell to select a specific Cloudflare account
     account_name = radio.value
     account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
     mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
-    return
-
-
-##################
-# Notebook Cells #
-##################
+    return (account_id,)
 
 
 @app.cell
 def _():
     import altair as alt
     from datetime import datetime
-    import boto3
     import json
     import pandas as pd
-    return alt, boto3, datetime, json, pd
+    return alt, datetime, json, pd
 
 
 @app.cell
@@ -126,26 +105,26 @@ def _(mo):
     mo.md(
         r"""
         # R2 usage metrics
-        # Helper function stubs
-        get_token = get_accounts = login = None
 
-                In this notebook, we will make use of the GraphQL endpoint in order to obtain usage metrics
-                related to an account's R2 buckets. This will involve the following:<br>
-                - Ranking buckets by number of objects, storage and operations<br>
-                - Plot overall account's usage of R2.
+        In this notebook, we will make use of the GraphQL endpoint in order to obtain usage metrics
+        related to an account's R2 buckets. This will involve the following:<br>
+        - Ranking buckets by number of objects, storage and operations<br>
+        - Plot overall account's usage of R2.
 
-                **Prerequisites:**<br>
-                - API token (see [here](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
-                for info on how to create one);<br>
-                - At least one active R2 bucket.
-                Relevant documentation:<br>
-                - [R2 metrics dev page](https://developers.cloudflare.com/r2/platform/metrics-analytics/)<br>
+        **Prerequisites:**<br>
+        - API token (see [here](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
+        for info on how to create one);<br>
+        - At least one active R2 bucket.<br>
+
+        Relevant documentation:<br>
+        - [R2 metrics dev page](https://developers.cloudflare.com/r2/platform/metrics-analytics/)<br>
         """
     )
+    return
 
 
 @app.cell
-def _(account_id, token, proxy):
+def _(account_id, proxy, token):
     CF_ACCOUNT_ID = account_id
     CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
     HOSTNAME = proxy
@@ -156,9 +135,8 @@ def _(account_id, token, proxy):
 def _(datetime):
     # Establish time interval since start of month (trimmed to minutes)
     curr_dt = datetime.now().replace(second=0, microsecond=0)
-    end_dt = curr_dt.strftime("%Y-%m-%dT%H:%M:00Z")
     start_dt = curr_dt.replace(day=1, hour=0).strftime("%Y-%m-%dT%H:00:00Z")
-    return curr_dt, end_dt, start_dt
+    return (start_dt,)
 
 
 @app.cell
@@ -211,15 +189,7 @@ def _(mo):
 
 
 @app.cell
-def _(
-    CF_ACCOUNT_ID,
-    CF_API_TOKEN,
-    HOSTNAME,
-    TOP_N,
-    json,
-    requests,
-    start_dt,
-):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
     _QUERY_STR = """
     query BucketLevelMetricsQuery($accountTag: string!, $limit: uint64!, $queryStart: Date) {
       viewer {
@@ -371,15 +341,7 @@ def _(mo):
 
 
 @app.cell
-def _(
-    CF_ACCOUNT_ID,
-    CF_API_TOKEN,
-    HOSTNAME,
-    TOP_N,
-    json,
-    requests,
-    start_dt,
-):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
     _QUERY_STR = """
     query BucketLevelMetricsQuery($accountTag: string!, $limit: uint64!, $queryStart: Date) {
       viewer {
@@ -478,7 +440,7 @@ def _(alt, datetime, df_top_size_standard, start_dt):
                 alt.Y(
                     "bucket",
                     title="Bucket name",
-                    sort=alt.EncodingSortField(field="objects", order="ascending"),
+                    sort=alt.EncodingSortField(field="size_gb", order="ascending"),
                 ),
                 alt.Text("size_readable"),
                 alt.Tooltip(["bucket", "size_readable"]),
@@ -514,7 +476,7 @@ def _(alt, datetime, df_top_size_ia, start_dt):
                 alt.Y(
                     "bucket",
                     title="Bucket name",
-                    sort=alt.EncodingSortField(field="objects", order="ascending"),
+                    sort=alt.EncodingSortField(field="size_gb", order="ascending"),
                 ),
                 alt.Text("size_readable"),
                 alt.Tooltip(["bucket", "size_readable"]),
@@ -533,15 +495,7 @@ def _(alt, datetime, df_top_size_ia, start_dt):
 
 
 @app.cell
-def _(
-    CF_ACCOUNT_ID,
-    CF_API_TOKEN,
-    HOSTNAME,
-    TOP_N,
-    json,
-    requests,
-    start_dt,
-):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
     _QUERY_STR = """
     query getR2Requests($accountTag: string,
                         $limit: $limit: uint64!,
@@ -922,15 +876,7 @@ def _(mo):
 
 
 @app.cell
-def _(
-    CF_ACCOUNT_ID,
-    CF_API_TOKEN,
-    HOSTNAME,
-    TOP_N,
-    json,
-    requests,
-    start_dt,
-):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
     _QUERY_STR = """
     query getR2Requests($accountTag: string,
                         $classAOpsFilter: AccountR2OperationsAdaptiveGroupsFilter_InputObject,

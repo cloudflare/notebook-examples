@@ -1,23 +1,13 @@
+
+
 import marimo
 
 __generated_with = "0.13.2"
-
-app = marimo.App(
-    width="full",
-    auto_download=["ipynb", "html"],
-    app_title="Cloudflare Notebook",
-)
-
-####################
-# Helper Functions #
-####################
-
-# Helper function stubs
-get_token = get_accounts = login = None
+app = marimo.App(width="full", app_title="Cloudflare Notebook")
 
 
 @app.cell(hide_code=True)
-async def _():
+def _():
     # Helper Functions
     import marimo as mo
     import js
@@ -78,46 +68,37 @@ async def _():
 
     # Start Login Form
     mo.iframe(login(), height="1px")
-    return None
+    return get_accounts, get_token, mo, proxy, requests
 
 
-###############
-# Login Cells #
-###############
-
-
-@app.cell()
-async def _(mo):
+@app.cell
+async def _(get_accounts, get_token, mo):
     # 1) After login, Run ▶ this cell to get your API token and accounts
     # 2) Select a specific Cloudflare account below
     # 3) Start coding!
     token = await get_token()
     accounts = await get_accounts(token)
     radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
-    return token, accounts, radio
+    return accounts, radio, token
 
 
 @app.cell(hide_code=True)
-def _(token, accounts, radio, mo):
+def _(accounts, mo, radio, token):
     # Run ▶ this cell to select a specific Cloudflare account
     account_name = radio.value
     account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
     mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
-    return
-
-
-##################
-# Notebook Cells #
-##################
+    return (account_id,)
 
 
 @app.cell
 def _():
-    import boto3
     import json
     import pandas as pd
-
-    return boto3, json, pd
+    import datetime
+    import hashlib
+    import hmac
+    return datetime, hashlib, hmac, json, pd
 
 
 @app.cell
@@ -129,34 +110,29 @@ def _(mo):
         In this notebook, we will show a simple use case involving interactions with
          R2 buckets associated to a Cloudflare account. This will involve the following:<br>
          1. listing buckets;<br>
-         2. listing files within a bucket;<br>
-         3. retrieving a file from a bucket.
+         2. retrieving a file from a bucket.
 
         **Prerequisites:**<br>
-         - R2 API token (see [here](https://developers.cloudflare.com/r2/api/s3/tokens/) for info on how to create one).
+         - R2 API token (see [here](https://developers.cloudflare.com/r2/api/s3/tokens/) for info on how to create
+         one);<br>
+         - An existing R2 bucket with a CORS policy (see
+         [here](https://developers.cloudflare.com/r2/buckets/cors/#add-cors-policies-from-the-dashboard)
+           how to configure).
+
+        Note: on the CORS `AllowedOrigins` field, `http://localhost:8088` should be included.
         """
     )
     return
 
 
 @app.cell
-def _(account_id, token, proxy):
+def _(account_id, proxy, token):
     CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
     R2_TOKEN = "<your-r2-token>"
     R2_SECRET = "<your-r2-secret>"
-    ENDPOINT = f"https://{CF_ACCOUNT_ID}.r2.cloudflarestorage.com"
-
-    # API calls
-    return (
-        CF_ACCOUNT_ID,
-        CF_API_TOKEN,
-        ENDPOINT,
-        HOSTNAME,
-        R2_SECRET,
-        R2_TOKEN,
-    )
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, R2_SECRET, R2_TOKEN
 
 
 @app.cell
@@ -195,9 +171,7 @@ def _(r2_info):
 
 @app.cell
 def _(mo):
-    mo.md(
-        r"""We can then obtain extra info on each bucket by adding its name on the endpoint:"""
-    )
+    mo.md(r"""We can then obtain extra info on each bucket by adding its name on the endpoint:""")
     return
 
 
@@ -226,71 +200,110 @@ def _(mo):
         and infrequent access versions. For more information on storage classes, check the dedicated
         [developers page](https://developers.cloudflare.com/r2/buckets/storage-classes/).
 
-        Futher interactions with a given bucket are done using the `boto3` API. Here we will list bucket files and
-        download one of them. Since we will be downloading to memory, we will use the S3 `client` instead of
-        `resource`.
+        Futher interactions with a given bucket can also be done using requests, but will require
+        [signing](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html)
+        each request. We will download an object to memory as an example:
         """
     )
     return
 
 
 @app.cell
-def _(ENDPOINT, R2_SECRET, R2_TOKEN, boto3):
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=ENDPOINT,
-        aws_access_key_id=R2_TOKEN,
-        aws_secret_access_key=R2_SECRET,
-    )
-    return (s3,)
-
-
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
-        Buckets can contain a very large amount of objects, so to prevent long lists of files, we will obtain the
-        first 50 only:
-        """
-    )
-    return
-
-
-@app.cell
-def _(SELECTED_BUCKET, pd, s3):
-    _file_list = s3.list_objects_v2(Bucket=SELECTED_BUCKET, MaxKeys=50)
-    if "Contents" in _file_list:
-        df_files = pd.DataFrame(_file_list["Contents"])
-    else:
-        df_files = None
-    return (df_files,)
-
-
-@app.cell
-def _(df_files):
-    df_files
-    return
-
-
-@app.cell
-def _(mo):
-    mo.md(r"""Finally, we can also download an object to memory:""")
-    return
-
-
-@app.cell
-def _(SELECTED_BUCKET, s3):
+def _(CF_ACCOUNT_ID, SELECTED_BUCKET):
     # Select which r2 object to download to memory
     SELECTED_OBJECT_PATH = "<your-r2-object>"
 
-    _response = s3.get_object(Bucket=SELECTED_BUCKET, Key=SELECTED_OBJECT_PATH)
-    file_contents = _response["Body"].read().decode()
-    return SELECTED_OBJECT_PATH, file_contents
+    host = f'{SELECTED_BUCKET}.{CF_ACCOUNT_ID}.r2.cloudflarestorage.com'
+    endpoint = f'https://{host}/{SELECTED_OBJECT_PATH}'
+    return SELECTED_OBJECT_PATH, endpoint, host
+
+
+@app.cell(hide_code=True)
+def _(
+    R2_SECRET,
+    R2_TOKEN,
+    SELECTED_OBJECT_PATH,
+    datetime,
+    hashlib,
+    hmac,
+    host,
+):
+    # These are steps needed in order to create a signed AWS request
+
+    # Timestamp must be UTC
+    _curr_timestamp = datetime.datetime.now(datetime.UTC)
+    _request_datetime = _curr_timestamp.strftime('%Y%m%dT%H%M%SZ')
+    _request_date = _curr_timestamp.strftime('%Y%m%d')
+
+    # Canonical request
+    _method = 'GET'
+    _canonical_uri = f'/{SELECTED_OBJECT_PATH}'
+    _canonical_querystring = ''
+    _payload_hash = hashlib.sha256(b'').hexdigest()
+    _canonical_headers = '\n'.join([
+        f'host:{host}',
+        f'x-amz-content-sha256:{_payload_hash}',
+        f'x-amz-date:{_request_datetime}\n'
+    ])
+    _signed_headers = 'host;x-amz-content-sha256;x-amz-date'
+
+    _canonical_request = '\n'.join([
+        _method,
+        _canonical_uri,
+        _canonical_querystring,
+        _canonical_headers,
+        _signed_headers,
+        _payload_hash
+    ])
+
+    # String to sign
+    _region = 'auto'
+    _service = 's3'
+    _algorithm = 'AWS4-HMAC-SHA256'
+    _credential_scope = f'{_request_date}/{_region}/{_service}/aws4_request'
+    _hashed_canonical_request = hashlib.sha256(_canonical_request.encode('utf-8')).hexdigest()
+
+    _string_to_sign = '\n'.join([
+        _algorithm,
+        _request_datetime,
+        _credential_scope,
+        _hashed_canonical_request
+    ])
+
+    # Signing key
+    def hmac_sha_hash(key, msg):
+        return hmac.new(key, msg=msg.encode('utf-8'), digestmod=hashlib.sha256).digest()
+
+    _secret_access_key = ('AWS4' + R2_SECRET).encode('utf-8')
+    _date_key = hmac_sha_hash(_secret_access_key, _request_date)
+    _region_key = hmac_sha_hash(_date_key, _region)
+    _service_key = hmac_sha_hash(_region_key, _service)
+    _signing_key = hmac_sha_hash(_service_key, 'aws4_request')
+
+    _signature = hmac.new(_signing_key, msg=_string_to_sign.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
+
+    # Create request with the signature
+    _authorization_header = ' '.join([
+        f'{_algorithm}',
+        f'Credential={R2_TOKEN}/{_credential_scope},',
+        f'SignedHeaders={_signed_headers},',
+        f'Signature={_signature}'
+    ])
+
+    headers = {
+        'x-amz-date': _request_datetime,
+        'x-amz-content-sha256': _payload_hash,
+        'Authorization': _authorization_header
+    }
+    return (headers,)
 
 
 @app.cell
-def _(file_contents):
-    file_contents
+def _(endpoint, headers, requests):
+    response = requests.get(endpoint, headers=headers)
+
+    print(f"Status Code: {response.status_code}")
+    print(f"Response: {response.text}")
     return
 
 
