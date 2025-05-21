@@ -12,6 +12,10 @@ notebooks:
     title: "Analytics: Zone Logs Query"
     description: "Query zone analytics logs to extract insights."
 
+  - file: analytics_ai_audit.html
+    title: "Analytics: AI Audit stats"
+    description: "Check zone traffic by AI crawler."
+
   # Compute
   - file: compute_ai.html
     title: "Compute: Workers AI"
