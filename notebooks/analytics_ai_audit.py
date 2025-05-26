@@ -200,9 +200,17 @@ def _(CF_API_TOKEN, HOSTNAME, account_id, json, pd, requests):
 
 
 @app.cell
-def _(CF_API_TOKEN, HOSTNAME, requests):
+def _(mo):
+    zone_form = mo.ui.text(label="Selected zone ID:").form()
+    zone_form
+    return (zone_form,)
+
+
+@app.cell
+def _(CF_API_TOKEN, HOSTNAME, mo, requests, zone_form):
     # Zone Id of the zone to obtain data from
-    SELECTED_ZONE = '<your-zone-tag>'
+    mo.stop(zone_form.value is None, 'Please submit a zone ID above first')
+    SELECTED_ZONE = zone_form.value
 
     # Endpoint to get zone info
     main_call = f'{HOSTNAME}/client/v4/zones/{SELECTED_ZONE}'
@@ -380,7 +388,7 @@ def _(USER_AGENTS, json_audit_data, pd, warnings):
             metric=_entry['dimensions']['metric'],
             user_agent=_entry['dimensions']['userAgent'],
             ua_matches=_curr_ua_matches,
-            visits=_entry['sum']['visits']
+            violations=_entry['sum']['visits']
         )
         _all_rows.append(_curr_row)
 
@@ -393,15 +401,15 @@ def _(df_ai_paths):
     _df_ai_matches_agg = df_ai_paths.copy()
     _df_ai_matches_agg['match'] = _df_ai_matches_agg['ua_matches'].apply(lambda x: x[0])
     _df_ai_matches_agg = _df_ai_matches_agg.groupby('match').agg({
-        'visits': 'sum'
-    }).reset_index().sort_values('visits', ascending=False)
+        'violations': 'sum'
+    }).reset_index().sort_values('violations', ascending=False)
     _df_ai_matches_agg
     return
 
 
 @app.cell
 def _(df_ai_paths):
-    df_ai_paths.sort_values('visits', ascending=False)
+    df_ai_paths.sort_values('violations', ascending=False)
     return
 
 
@@ -481,7 +489,7 @@ def _(USER_AGENTS, json_audit_ts_data, pd):
             time=_entry['dimensions']['ts'],
             user_agent=_entry['dimensions']['userAgent'],
             ua_matches=_curr_ua_matches[0],
-            visits=_entry['sum']['visits']
+            violations=_entry['sum']['visits']
         )
         _all_rows.append(_curr_row)
 
@@ -494,7 +502,7 @@ def _(USER_AGENTS, json_audit_ts_data, pd):
 def _(alt, df_ai_time):
     alt.Chart(df_ai_time).mark_line().encode(
         alt.X('time:T', title='Time'),
-        alt.Y('visits:Q', title='Requests'),
+        alt.Y('violations:Q', title='Visits'),
         alt.Color('ua_matches', title='AI crawler')
     ).properties(height=400, width=500,
                  title=dict(text='Site requests by AI crawler', subtitle='Violations only'))
