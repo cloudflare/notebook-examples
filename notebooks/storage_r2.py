@@ -6,99 +6,16 @@ __generated_with = "0.13.2"
 app = marimo.App(width="full", app_title="Cloudflare Notebook")
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _():
-    # Helper Functions
     import marimo as mo
-    import js
     import requests
-    import urllib
-
-    proxy = "https://examples-api-proxy.notebooks.cloudflare.com"
-
-    async def get_token():
-        # Retrieve the token from IndexedDB
-        js.eval(
-            """
-        async function getAuthToken() {
-          const dbName = 'notebook-examples';
-          const storeName = 'oauth';
-          const keyName = 'auth_token';
-          return new Promise((resolve, reject) => {
-            const request = indexedDB.open(dbName, 1);
-            request.onupgradeneeded = event => {
-              const db = event.target.result;
-              if (!db.objectStoreNames.contains(storeName)) {
-                db.createObjectStore(storeName, { keyPath: 'id' });
-              }
-            };
-            request.onerror = event => reject("Error opening database " + dbName + ": " + event);
-            request.onsuccess = event => {
-              const db = event.target.result;
-              const tx = db.transaction(storeName, 'readonly');
-              const store = tx.objectStore(storeName);
-              const getRequest = store.get(keyName);
-              getRequest.onsuccess = () => resolve(getRequest.result);
-              getRequest.onerror = event => reject("Missing data "
-                + dbName + ":" + storeName + ":" + keyName + ": " + event);
-            };
-          });
-        }
-        """
-        )
-        tokenRecord = await js.getAuthToken()
-        token = tokenRecord.token if tokenRecord and tokenRecord.token else None
-        return token
-
-    async def get_accounts(token):
-        # Example API request to list available Cloudflare accounts
-        token = token or await get_token()
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}"},
-        ).json()
-        return res.get("result", []) or []
-
-    def login():
-        # Fetch and return the login form HTML from marimo public folder
-        html_path = f"{mo.notebook_location()}/public/login"
-        with urllib.request.urlopen(html_path) as response:
-            html = response.read().decode()
-        return html
-
-    # Start Login Form
-    mo.iframe(login(), height="1px")
-    return get_accounts, get_token, mo, proxy, requests
-
-
-@app.cell
-async def _(get_accounts, get_token, mo):
-    # 1) After login, Run ▶ this cell to get your API token and accounts
-    # 2) Select a specific Cloudflare account below
-    # 3) Start coding!
-    token = await get_token()
-    accounts = await get_accounts(token)
-    radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
-    return accounts, radio, token
-
-
-@app.cell(hide_code=True)
-def _(accounts, mo, radio, token):
-    # Run ▶ this cell to select a specific Cloudflare account
-    account_name = radio.value
-    account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
-    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
-    return (account_id,)
-
-
-@app.cell
-def _():
     import json
     import pandas as pd
     import datetime
     import hashlib
     import hmac
-    return datetime, hashlib, hmac, json, pd
+    return datetime, hashlib, hmac, json, mo, pd, requests
 
 
 @app.cell
@@ -126,12 +43,44 @@ def _(mo):
 
 
 @app.cell
-def _(account_id, proxy, token):
-    CF_ACCOUNT_ID = account_id  # After login, selected from list above
-    CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
-    HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
-    R2_TOKEN = "<your-r2-token>"
-    R2_SECRET = "<your-r2-secret>"
+def _(mo):
+    account_form = mo.ui.text(label="Selected account ID:").form()
+    account_form
+    return (account_form,)
+
+
+@app.cell
+def _(mo):
+    token_form = mo.ui.text(label="Provided API token:").form()
+    token_form
+    return (token_form,)
+
+
+@app.cell
+def _(mo):
+    r2_token_form = mo.ui.text(label="Provided R2 token:").form()
+    r2_token_form
+    return (r2_token_form,)
+
+
+@app.cell
+def _(mo):
+    r2_secret_form = mo.ui.text(label="Provided R2 secret:").form()
+    r2_secret_form
+    return (r2_secret_form,)
+
+
+@app.cell
+def _(account_form, mo, r2_secret_form, r2_token_form, token_form):
+    mo.stop((account_form.value is None or token_form.value is None
+             or r2_token_form.value is None or r2_secret_form.value is None),
+            'Please submit an account ID, API token, R2 token and R2 secret above first')
+
+    CF_ACCOUNT_ID = account_form.value
+    CF_API_TOKEN = token_form.value
+    HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"  # using notebooks.cloudflare.com proxy
+    R2_TOKEN = r2_token_form.value
+    R2_SECRET = r2_secret_form.value
     return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, R2_SECRET, R2_TOKEN
 
 
@@ -176,9 +125,26 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, requests):
-    # Select R2 bucket name (this impacts the rest of the notebook)
-    SELECTED_BUCKET = "<your-bucket>"
+def _(mo):
+    r2_bucket_form = mo.ui.text(label="Provided R2 bucket:").form()
+    r2_bucket_form
+    return (r2_bucket_form,)
+
+
+@app.cell
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    json,
+    mo,
+    r2_bucket_form,
+    requests,
+):
+    mo.stop(r2_bucket_form.value is None,
+            'Please submit an R2 bucket above first')
+
+    SELECTED_BUCKET = r2_bucket_form.value
 
     # Endpoint to get bucket info
     _main_call = (
@@ -209,9 +175,18 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, SELECTED_BUCKET):
-    # Select which r2 object to download to memory
-    SELECTED_OBJECT_PATH = "<your-r2-object>"
+def _(mo):
+    r2_object_form = mo.ui.text(label="Provided R2 object:").form()
+    r2_object_form
+    return (r2_object_form,)
+
+
+@app.cell
+def _(CF_ACCOUNT_ID, SELECTED_BUCKET, mo, r2_object_form):
+    mo.stop(r2_object_form.value is None,
+            'Please submit an R2 object above first')
+
+    SELECTED_OBJECT_PATH = r2_object_form.value
 
     host = f'{SELECTED_BUCKET}.{CF_ACCOUNT_ID}.r2.cloudflarestorage.com'
     endpoint = f'https://{host}/{SELECTED_OBJECT_PATH}'

@@ -35,20 +35,19 @@ notebooks:
     description: "Demo different features in Marimo, not specific to Cloudflare"
 
   # Storage
+  - file: storage_d1.html
+    title: "Storage: D1 Quickstart"
+    description: "Create, populate, and query a D1 database table."
+
+  - file: storage_kv.html
+    title: "Storage: KV Usage Analytics"
+    description: "Fetch and rank request metrics for KV storage."
+
+  - file: storage_r2.html
+    title: "Storage: R2 Quickstart"
+    description: "List objects and download files from R2 storage."
 
   # [TODO]
   - file: analytics_r2_usage.html
     title: "[TODO] Analytics: R2 Usage"
     description: "Fetch and rank usage metrics for R2 storage and requests."
-
-  - file: storage_d1.html
-    title: "[TODO] Storage: D1 Quickstart"
-    description: "Create, populate, and query a D1 database table."
-
-  - file: storage_kv.html
-    title: "[TODO] Storage: KV Usage Analytics"
-    description: "Fetch and rank request metrics for KV storage."
-
-  - file: storage_r2.html
-    title: "[TODO] Storage: R2 Quickstart"
-    description: "List objects and download files from R2 storage."
