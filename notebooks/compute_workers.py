@@ -102,7 +102,7 @@ def _(account_id, mo, proxy, token):
 
     CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
-    HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
+    HOSTNAME = proxy
     return (
         CF_ACCOUNT_ID,
         CF_API_TOKEN,
