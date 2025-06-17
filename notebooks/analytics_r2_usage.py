@@ -92,12 +92,18 @@ def _(accounts, mo, radio, token):
 
 
 @app.cell
-def _():
+def _(account_id, mo, proxy, token):
+    mo.stop(token is None or account_id is None, 'Please retrieve a token first and select an account above')
+
     import altair as alt
     from datetime import datetime
     import json
     import pandas as pd
-    return alt, datetime, json, pd
+
+    CF_ACCOUNT_ID = account_id
+    CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, alt, datetime, json, pd
 
 
 @app.cell
@@ -121,14 +127,6 @@ def _(mo):
         """
     )
     return
-
-
-@app.cell
-def _(account_id, proxy, token):
-    CF_ACCOUNT_ID = account_id
-    CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
-    HOSTNAME = proxy
-    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME
 
 
 @app.cell
