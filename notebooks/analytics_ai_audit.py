@@ -92,7 +92,9 @@ def _(accounts, mo, radio, token):
 
 
 @app.cell
-def _(proxy, token):
+def _(account_id, mo, proxy, token):
+    mo.stop(token is None or account_id is None, 'Please retrieve a token first and select an account above')
+
     import altair as alt
     from datetime import datetime, timedelta
     import json

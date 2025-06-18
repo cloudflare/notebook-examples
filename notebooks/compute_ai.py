@@ -1,23 +1,13 @@
+
+
 import marimo
 
 __generated_with = "0.13.2"
-
-app = marimo.App(
-    width="full",
-    auto_download=["ipynb", "html"],
-    app_title="Cloudflare Notebook",
-)
-
-####################
-# Helper Functions #
-####################
-
-# Helper function stubs
-get_token = get_accounts = login = None
+app = marimo.App(width="full", app_title="Cloudflare Notebook")
 
 
 @app.cell(hide_code=True)
-async def _():
+def _():
     # Helper Functions
     import marimo as mo
     import js
@@ -78,47 +68,51 @@ async def _():
 
     # Start Login Form
     mo.iframe(login(), height="1px")
-    return None
+    return get_accounts, get_token, mo, proxy, requests
 
 
-###############
-# Login Cells #
-###############
-
-
-@app.cell()
-async def _(mo):
+@app.cell
+async def _(get_accounts, get_token, mo):
     # 1) After login, Run ▶ this cell to get your API token and accounts
     # 2) Select a specific Cloudflare account below
     # 3) Start coding!
     token = await get_token()
     accounts = await get_accounts(token)
     radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
-    return token, accounts, radio
+    return accounts, radio, token
 
 
 @app.cell(hide_code=True)
-def _(token, accounts, radio, mo):
+def _(accounts, mo, radio, token):
     # Run ▶ this cell to select a specific Cloudflare account
     account_name = radio.value
     account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
     mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
-    return
-
-
-##################
-# Notebook Cells #
-##################
+    return (account_id,)
 
 
 @app.cell
-def _():
+def _(account_id, mo, proxy, token):
+    mo.stop(token is None or account_id is None, 'Please retrieve a token first and select an account above')
+
     import altair as alt
     from datetime import datetime, timedelta
     import json
     import pandas as pd
 
-    return alt, datetime, json, pd, timedelta
+    CF_ACCOUNT_ID = account_id  # After login, selected from list above
+    CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy
+    return (
+        CF_ACCOUNT_ID,
+        CF_API_TOKEN,
+        HOSTNAME,
+        alt,
+        datetime,
+        json,
+        pd,
+        timedelta,
+    )
 
 
 @app.cell
@@ -139,14 +133,6 @@ def _(mo):
         """
     )
     return
-
-
-@app.cell
-def _(account_id, token, proxy):
-    CF_ACCOUNT_ID = account_id  # After login, selected from list above
-    CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
-    HOSTNAME = proxy  # using notebooks.cloudflare.com proxy
-    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME
 
 
 @app.cell
@@ -203,7 +189,7 @@ def _(AIClient, CF_ACCOUNT_ID, CF_API_TOKEN):
     model_name = "@cf/meta/llama-3.1-8b-instruct"
 
     ai_session = AIClient(CF_ACCOUNT_ID, CF_API_TOKEN, model_name)
-    return ai_session, model_name
+    return (ai_session,)
 
 
 @app.cell
@@ -309,19 +295,11 @@ def _(datetime, timedelta):
     curr_dt = datetime.now().replace(second=0, microsecond=0)
     end_dt = curr_dt.strftime("%Y-%m-%dT%H:%M:00Z")
     start_dt = (curr_dt - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:00Z")
-    return curr_dt, end_dt, start_dt
+    return end_dt, start_dt
 
 
 @app.cell
-def _(
-    CF_ACCOUNT_ID,
-    CF_API_TOKEN,
-    HOSTNAME,
-    end_dt,
-    json,
-    requests,
-    start_dt,
-):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
     _QUERY_STR = """
     query GetModelUsageOverTime($accountTag: string, $filter: filter) {
       viewer {

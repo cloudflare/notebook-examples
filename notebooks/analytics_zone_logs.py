@@ -1,23 +1,13 @@
+
+
 import marimo
 
 __generated_with = "0.13.2"
-
-app = marimo.App(
-    width="full",
-    auto_download=["ipynb", "html"],
-    app_title="Cloudflare Notebook",
-)
-
-####################
-# Helper Functions #
-####################
-
-# Helper function stubs
-get_token = get_accounts = login = None
+app = marimo.App(width="full", app_title="Cloudflare Notebook")
 
 
 @app.cell(hide_code=True)
-async def _():
+def _():
     # Helper Functions
     import marimo as mo
     import js
@@ -78,46 +68,51 @@ async def _():
 
     # Start Login Form
     mo.iframe(login(), height="1px")
-    return None
+    return get_accounts, get_token, mo, proxy, requests
 
 
-###############
-# Login Cells #
-###############
-
-
-@app.cell()
-async def _(mo):
+@app.cell
+async def _(get_accounts, get_token, mo):
     # 1) After login, Run ▶ this cell to get your API token and accounts
     # 2) Select a specific Cloudflare account below
     # 3) Start coding!
     token = await get_token()
     accounts = await get_accounts(token)
     radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
-    return token, accounts, radio
+    return accounts, radio, token
 
 
 @app.cell(hide_code=True)
-def _(token, accounts, radio, mo):
+def _(accounts, mo, radio, token):
     # Run ▶ this cell to select a specific Cloudflare account
     account_name = radio.value
     account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
     mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
-    return
-
-
-##################
-# Notebook Cells #
-##################
+    return (account_id,)
 
 
 @app.cell
-def _():
+def _(account_id, mo, proxy, token):
+    mo.stop(token is None or account_id is None, 'Please retrieve a token first and select an account above')
+
     import altair as alt
     from datetime import datetime, timedelta
     import json
     import pandas as pd
-    return alt, datetime, json, pd, timedelta
+
+    CF_ACCOUNT_ID = account_id
+    CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
+    HOSTNAME = proxy
+    return (
+        CF_ACCOUNT_ID,
+        CF_API_TOKEN,
+        HOSTNAME,
+        alt,
+        datetime,
+        json,
+        pd,
+        timedelta,
+    )
 
 
 @app.cell
@@ -133,25 +128,18 @@ def _(mo):
          - At least one active zone.
         """
     )
+    return
 
 
 @app.cell
-def _(account_id, token, proxy):
-    CF_ACCOUNT_ID = account_id
-    CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
-    HOSTNAME = proxy
-    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME
-
-
-@app.cell
-def _(HOSTNAME, CF_API_TOKEN, json, pd, requests, account_id):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
     # Endpoint to get list of zones belonging to the selected account
     # Warning: this will fetch at most 50 zones
     main_call = f"{HOSTNAME}/client/v4/zones"
     _api_resp = requests.get(
         main_call,
         headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        params={"per_page": 50, "account.id": account_id},
+        params={"per_page": 50, "account.id": CF_ACCOUNT_ID},
     ).text
     _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
 
@@ -164,7 +152,7 @@ def _(HOSTNAME, CF_API_TOKEN, json, pd, requests, account_id):
         ["name", "id", "plan_name", "status", "paused", "modified_on"]
     ]
     account_zones = account_zones.sort_values("name")
-    return account_zones, main_call
+    return (account_zones,)
 
 
 @app.cell
@@ -192,7 +180,7 @@ def _(mo):
 
 
 @app.cell
-def _(datetime, timedelta, account_zones):
+def _(account_zones, datetime, timedelta):
     # Choose zone tag (id) to obtain data from, using the table above
     zone_tag = account_zones["id"][0]
     # Demo example: First zone from the list
@@ -201,11 +189,11 @@ def _(datetime, timedelta, account_zones):
     curr_dt = datetime.now().replace(second=0, microsecond=0)
     end_dt = curr_dt.strftime("%Y-%m-%dT%H:%M:00Z")
     start_dt = (curr_dt - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:00Z")
-    return curr_dt, end_dt, start_dt, zone_tag
+    return end_dt, start_dt, zone_tag
 
 
 @app.cell
-def _(HOSTNAME, CF_API_TOKEN, end_dt, json, requests, start_dt, zone_tag):
+def _(CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt, zone_tag):
     _QUERY_STR = """
     query GetZoneAnalytics($zoneTag: string, $since: string, $until: string) {
       viewer {
@@ -328,7 +316,7 @@ def _(json_analytics, pd):
     # For now, we do not want status codes to be interpreted as integers
     # (tends to affect charts)
     df_status_code["key"] = df_status_code["key"].astype(str)
-    return df_status_code, j
+    return (df_status_code,)
 
 
 @app.cell
@@ -358,7 +346,7 @@ def _(df_status_code):
     df_status_summary["share_requests"] = (
         df_status_summary["requests"] / df_status_summary["requests"].sum() * 100
     )
-    return TOP_STATUS_CODES, df_status_summary
+    return (df_status_summary,)
 
 
 @app.cell
@@ -420,9 +408,9 @@ def _():
 
 @app.cell
 def _(
+    CF_API_TOKEN,
     HOSTNAME,
     HTTP_STATUS_CODE,
-    CF_API_TOKEN,
     end_dt,
     json,
     requests,

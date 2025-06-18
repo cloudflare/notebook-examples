@@ -16,6 +16,10 @@ notebooks:
     title: "Analytics: AI Audit stats"
     description: "Check zone traffic by AI crawler."
 
+  - file: analytics_r2_usage.html
+    title: "Analytics: R2 Usage"
+    description: "Fetch and rank usage metrics for R2 storage and requests."
+
   # Compute
   - file: compute_ai.html
     title: "Compute: Workers AI"
@@ -46,8 +50,3 @@ notebooks:
   - file: storage_r2.html
     title: "Storage: R2 Quickstart"
     description: "List objects and download files from R2 storage."
-
-  # [TODO]
-  - file: analytics_r2_usage.html
-    title: "[TODO] Analytics: R2 Usage"
-    description: "Fetch and rank usage metrics for R2 storage and requests."
