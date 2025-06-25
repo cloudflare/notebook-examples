@@ -1,19 +1,21 @@
-// token.js - Proxy POST requests to the IdP OAuth2 token endpoint.
+// token.js - Proxy POST requests to the IdP OAuth2 token and revoke endpoints.
 
 
 const IDP_PROTO = 'https';
 const IDP_HOST = 'dash.cloudflare.com';
 const IDP_PORT = 443;
 const IDP_TOKEN_PATH = '/oauth2/token';
-
+const IDP_REVOKE_PATH = '/oauth2/revoke';
 
 export async function onRequest(ctx) {
     const url = new URL(ctx.request.url);
+    const pathname = url.pathname.replace(/[/]+$/, '');
 
-    if (url.pathname.replace(/[/]+$/, '') !== IDP_TOKEN_PATH) {
+    // Check if the path is either token or revoke
+    if (pathname !== IDP_TOKEN_PATH && pathname !== IDP_REVOKE_PATH) {
         const payload = {
             error: 'invalid_request',
-            error_verbose: `only ${IDP_TOKEN_PATH} can be proxied`,
+            error_verbose: `only ${IDP_TOKEN_PATH} and ${IDP_REVOKE_PATH} can be proxied`,
             status_code: 400,
         };
 

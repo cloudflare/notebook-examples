@@ -1,96 +1,80 @@
-
-
 import marimo
 
-__generated_with = "0.13.2"
-app = marimo.App(width="medium")
+__generated_with = "0.14.7"
+
+app = marimo.App(
+    width="full",
+    auto_download=["ipynb", "html"],
+    app_title="Cloudflare Notebook",
+)
+
+####################
+# Helper Functions #
+####################
+get_accounts = None
 
 
 @app.cell(hide_code=True)
-def _():
-    # Helper Functions
-    import marimo as mo
+async def _():
+    # Helper Functions - click to view code
     import js
-    import urllib
-    from urllib.request import Request, urlopen
     import json
+    from urllib.request import Request, urlopen
 
-    proxy = "https://examples-api-proxy.notebooks.cloudflare.com"
-
-    async def get_token():
-        # Retrieve the token from IndexedDB
-        js.eval(
-            """
-        async function getAuthToken() {
-          const dbName = 'notebook-examples';
-          const storeName = 'oauth';
-          const keyName = 'auth_token';
-          return new Promise((resolve, reject) => {
-            const request = indexedDB.open(dbName, 1);
-            request.onupgradeneeded = event => {
-              const db = event.target.result;
-              if (!db.objectStoreNames.contains(storeName)) {
-                db.createObjectStore(storeName, { keyPath: 'id' });
-              }
-            };
-            request.onerror = event => reject("Error opening database " + dbName + ": " + event);
-            request.onsuccess = event => {
-              const db = event.target.result;
-              const tx = db.transaction(storeName, 'readonly');
-              const store = tx.objectStore(storeName);
-              const getRequest = store.get(keyName);
-              getRequest.onsuccess = () => resolve(getRequest.result);
-              getRequest.onerror = event => reject("Missing data "
-                + dbName + ":" + storeName + ":" + keyName + ": " + event);
-            };
-          });
-        }
-        """
-        )
-        tokenRecord = await js.getAuthToken()
-        token = tokenRecord.token if tokenRecord and tokenRecord.token else None
-        return token
+    origin = js.eval("self.location?.origin")
+    proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        token = token or await get_token()
-        request = Request(f"{proxy}/client/v4/accounts",
-                          headers={"Authorization": f"Bearer {token}"})
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
         res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    def login():
-        # Fetch and return the login form HTML from marimo public folder
-        html_path = f"{mo.notebook_location()}/public/login"
-        with urllib.request.urlopen(html_path) as response:
-            html = response.read().decode()
-        return html
-
-    # Start Login Form
-    mo.iframe(login(), height="1px")
-    return Request, get_accounts, get_token, json, mo, proxy, urllib, urlopen
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
-@app.cell
-async def _(get_accounts, get_token, mo):
+###############
+# Login Cells #
+###############
+@app.cell(hide_code=True)
+def _(origin):
+    # Login cell - click to view code
+    from moutils.oauth import PKCEFlow
+
+    df = PKCEFlow(
+        provider="cloudflare",
+        client_id="ec85d9cd-ff12-4d96-a376-432dbcf0bbfc",
+        logout_url=f"{origin}/oauth2/revoke",
+        redirect_uri=f"{origin}/oauth/callback",
+        token_url=f"{origin}/oauth2/token",
+    )
+    df
+    return PKCEFlow, df, None, None
+
+
+@app.cell()
+async def _(mo, df):
     # 1) After login, Run ▶ this cell to get your API token and accounts
     # 2) Select a specific Cloudflare account below
-    # 3) Start coding!
-    token = await get_token()
-    accounts = await get_accounts(token)
+    # 3) Start coding
+    print(f"df.access_token: {df.access_token}")
+    accounts = await get_accounts(df.access_token)
     radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
-    return accounts, radio, token
+    return accounts, radio
 
 
 @app.cell(hide_code=True)
-def _(accounts, mo, radio, token):
+def _(df, accounts, radio, mo):
     # Run ▶ this cell to select a specific Cloudflare account
-    account_name = radio.value
-    account_id = next((a["id"] for a in accounts if a["name"] == account_name), None)
-    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}")])  # noqa: E501
-    return (account_id,)
+    account_name = radio.value if radio else None
+    account_id = (next((a["id"] for a in accounts if a["name"] == account_name), None) if accounts else None)  # noqa: E501
+    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {df.access_token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}"),])  # noqa: E501
+    return
 
 
+##################
+# Notebook Cells #
+##################
 @app.cell
 def _(account_id, mo, proxy, token):
     mo.stop(token is None or account_id is None, 'Please retrieve a token first and select an account above')
