@@ -38,7 +38,8 @@ async def _():
 ###############
 @app.cell(hide_code=True)
 def _(origin):
-    # Login cell - click to view code
+    # Login to Cloudflare - click to view code
+    import requests  # noqa: F401 - required for moutils.oauth
     from moutils.oauth import PKCEFlow
     df = PKCEFlow(
         provider="cloudflare",
@@ -48,7 +49,7 @@ def _(origin):
         token_url=f"{origin}/oauth2/token",
     )
     df
-    return PKCEFlow, df, None, None
+    return df
 
 
 @app.cell()
@@ -56,7 +57,6 @@ async def _(mo, df, get_accounts):
     # 1) After login, Run ▶ this cell to get your API token and accounts
     # 2) Select a specific Cloudflare account below
     # 3) Start coding
-
     print(f"df.access_token: {df.access_token}")
     accounts = await get_accounts(df.access_token)
     radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
