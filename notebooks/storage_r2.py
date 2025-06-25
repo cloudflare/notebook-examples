@@ -9,13 +9,14 @@ app = marimo.App(width="full", app_title="Cloudflare Notebook")
 @app.cell
 def _():
     import marimo as mo
-    import requests
     import json
     import pandas as pd
     import datetime
     import hashlib
     import hmac
-    return datetime, hashlib, hmac, json, mo, pd, requests
+    import urllib
+    from urllib.request import Request, urlopen
+    return Request, datetime, hashlib, hmac, json, mo, pd, urllib, urlopen
 
 
 @app.cell
@@ -99,14 +100,22 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    json,
+    pd,
+    urllib,
+    urlopen,
+):
     # Endpoint to get buckets from an account
     _main_call = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/r2/buckets"
-    _api_resp = requests.get(
-        _main_call,
-        params={"per_page": 100},
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-    ).text
+    _params = {"per_page": 100}
+    _main_call = _main_call + '?' + urllib.parse.urlencode(_params)
+    _request = Request(_main_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _api_resp = urlopen(_request).read()
 
     r2_info = pd.DataFrame(json.loads(_api_resp)["result"]["buckets"])
     return (r2_info,)
@@ -136,10 +145,11 @@ def _(
     CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
+    Request,
     json,
     mo,
     r2_bucket_form,
-    requests,
+    urlopen,
 ):
     mo.stop(r2_bucket_form.value is None,
             'Please submit an R2 bucket above first')
@@ -150,9 +160,8 @@ def _(
     _main_call = (
         f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/r2/buckets/{SELECTED_BUCKET}"
     )
-    _api_resp = requests.get(
-        _main_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"}
-    ).text
+    _request = Request(_main_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _api_resp = urlopen(_request).read()
 
     json.loads(_api_resp)["result"]
     return (SELECTED_BUCKET,)
@@ -274,11 +283,12 @@ def _(
 
 
 @app.cell
-def _(endpoint, headers, requests):
-    response = requests.get(endpoint, headers=headers)
+def _(Request, endpoint, headers, urlopen):
+    _request = Request(endpoint, headers=headers)
+    response = urlopen(_request)
 
-    print(f"Status Code: {response.status_code}")
-    print(f"Response: {response.text}")
+    print(f"Status Code: {response.getcode()}")
+    print(f"Response: {response.read()}")
     return
 
 

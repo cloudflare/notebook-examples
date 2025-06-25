@@ -13,6 +13,7 @@ def _():
     import js
     import requests
     import urllib
+    from urllib.request import Request, urlopen
 
     proxy = "https://examples-api-proxy.notebooks.cloudflare.com"
 
@@ -68,7 +69,7 @@ def _():
 
     # Start Login Form
     mo.iframe(login(), height="1px")
-    return get_accounts, get_token, mo, proxy, requests
+    return Request, get_accounts, get_token, mo, proxy, urlopen
 
 
 @app.cell
@@ -187,7 +188,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query BucketLevelMetricsQuery($accountTag: string!, $limit: uint64!, $queryStart: Date) {
       viewer {
@@ -223,13 +233,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         "queryStart": start_dt,
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_object_rank_data = json.loads(_resp_raw.text)
+    json_object_rank_data = json.loads(_resp_raw)
     return (json_object_rank_data,)
 
 
@@ -339,7 +352,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query BucketLevelMetricsQuery($accountTag: string!, $limit: uint64!, $queryStart: Date) {
       viewer {
@@ -375,13 +397,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         "queryStart": start_dt,
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_size_rank_data = json.loads(_resp_raw.text)
+    json_size_rank_data = json.loads(_resp_raw)
     return (json_size_rank_data,)
 
 
@@ -493,7 +518,16 @@ def _(alt, datetime, df_top_size_ia, start_dt):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query getR2Requests($accountTag: string,
                         $limit: $limit: uint64!,
@@ -613,13 +647,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         },
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_request_rank_data = json.loads(_resp_raw.text)
+    json_request_rank_data = json.loads(_resp_raw)
     return (json_request_rank_data,)
 
 
@@ -874,7 +911,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query getR2Requests($accountTag: string,
                         $classAOpsFilter: AccountR2OperationsAdaptiveGroupsFilter_InputObject,
@@ -969,13 +1015,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         "storageFilter": {"AND": [{"datetime_geq": start_dt}]},
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_metric_data = json.loads(_resp_raw.text)
+    json_metric_data = json.loads(_resp_raw)
     return (json_metric_data,)
 
 

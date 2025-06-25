@@ -10,8 +10,9 @@ app = marimo.App(width="full", app_title="Cloudflare Notebook")
 def _():
     import marimo as mo
     import pandas as pd
-    import requests
-    return mo, pd, requests
+    from urllib.request import Request, urlopen
+    import json
+    return Request, json, mo, pd, urlopen
 
 
 @app.cell
@@ -76,12 +77,13 @@ def _(mo):
 
 
 @app.cell
-def _(CF_API_TOKEN, URL, pd, requests):
+def _(CF_API_TOKEN, Request, URL, json, pd, urlopen):
     # Send GET query
-    api_resp = requests.get(URL, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _request = Request(URL, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    api_resp = urlopen(_request)
 
     # Results handling
-    api_resp_json = api_resp.json()
+    api_resp_json = json.load(api_resp)
     if api_resp_json["success"]:
         print("Successfully fetched D1 dataset list")
         d1_datasets = pd.DataFrame(api_resp_json["result"])
@@ -130,16 +132,20 @@ def _(mo):
 
 
 @app.cell
-def _(HOSTNAME, requests):
+def _(HOSTNAME, Request, json, urlopen):
     # Perform a query and return results as json
     # Raises error otherwise, prints which errors were obtained
     def query_d1(account_id, database_id, token, query):
         url = f"{HOSTNAME}/client/v4/accounts/{account_id}/d1/database/{database_id}/query"
-        payload = dict(sql=query)
-        query_resp = requests.post(
-            url, headers={"Authorization": "Bearer {}".format(token)}, json=payload
-        )
-        query_resp_json = query_resp.json()
+        payload = json.dumps({'sql': query}).encode()
+        request = Request(url,
+                          headers={"Authorization": "Bearer {}".format(token),
+                                   "Accept": "application/json",
+                                   "Content-Type": "application/json"},
+                          data=payload,
+                          method='POST')
+        query_resp = urlopen(request)
+        query_resp_json = json.load(query_resp)
 
         if query_resp_json["success"]:
             return query_resp_json["result"]

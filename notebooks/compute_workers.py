@@ -13,6 +13,7 @@ def _():
     import js
     import requests
     import urllib
+    from urllib.request import Request, urlopen
 
     proxy = "https://examples-api-proxy.notebooks.cloudflare.com"
 
@@ -68,7 +69,7 @@ def _():
 
     # Start Login Form
     mo.iframe(login(), height="1px")
-    return get_accounts, get_token, mo, proxy, requests
+    return Request, get_accounts, get_token, mo, proxy, urlopen
 
 
 @app.cell
@@ -142,7 +143,16 @@ def _(datetime, timedelta):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    end_dt,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query getServiceRequestsQuery($accountTag: string, $filter: ZoneWorkersRequestsFilter_InputObject) {
       viewer {
@@ -202,13 +212,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
         "filter": {"AND": [{"datetimeHour_leq": end_dt, "datetimeHour_geq": start_dt}]},
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_worker_data = json.loads(_resp_raw.text)
+    json_worker_data = json.loads(_resp_raw)
     return (json_worker_data,)
 
 
@@ -382,11 +395,12 @@ def _(
     CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
+    Request,
     TOP_REQUESTS_WORKERS,
     end_dt,
     json,
-    requests,
     start_dt,
+    urlopen,
 ):
     _QUERY_STR = """
     query GetWorkerRequests($accountTag: string!,
@@ -420,13 +434,16 @@ def _(
         "scriptNames": TOP_REQUESTS_WORKERS,
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_request_data = json.loads(_resp_raw.text)
+    json_request_data = json.loads(_resp_raw)
     return (json_request_data,)
 
 
@@ -481,12 +498,13 @@ def _(
     CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
+    Request,
     TOP_DISCONNECTS_WORKERS,
     TOP_ERRORS_WORKERS,
     end_dt,
     json,
-    requests,
     start_dt,
+    urlopen,
 ):
     _QUERY_STR = """
     query GetWorkerRequests($accountTag: string!,
@@ -523,13 +541,16 @@ def _(
         "scriptNames": list(set(TOP_DISCONNECTS_WORKERS + TOP_ERRORS_WORKERS)),
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_error_data = json.loads(_resp_raw.text)
+    json_error_data = json.loads(_resp_raw)
     return (json_error_data,)
 
 
@@ -601,11 +622,12 @@ def _(
     CF_ACCOUNT_ID,
     CF_API_TOKEN,
     HOSTNAME,
+    Request,
     TOP_CPU_TIME_WORKERS,
     end_dt,
     json,
-    requests,
     start_dt,
+    urlopen,
 ):
     _QUERY_STR = """
     query GetWorkerCPUTime($accountTag: string!,
@@ -639,13 +661,16 @@ def _(
         "scriptNames": TOP_CPU_TIME_WORKERS,
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_cpu_data = json.loads(_resp_raw.text)
+    json_cpu_data = json.loads(_resp_raw)
     return (json_cpu_data,)
 
 

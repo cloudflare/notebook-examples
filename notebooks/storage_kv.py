@@ -13,8 +13,9 @@ def _():
     import json
     import pandas as pd
     import marimo as mo
-    import requests
-    return alt, datetime, json, mo, pd, requests, timedelta
+    import urllib
+    from urllib.request import Request, urlopen
+    return Request, alt, datetime, json, mo, pd, timedelta, urllib, urlopen
 
 
 @app.cell
@@ -60,7 +61,7 @@ def _(account_form, datetime, mo, timedelta, token_form):
 
     CF_ACCOUNT_ID = account_form.value
     CF_API_TOKEN = token_form.value
-    HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"  # using notebooks.cloudflare.com proxy
+    HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"
 
     # Establish time interval to last 2 weeks (trimmed to day)
     curr_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -76,7 +77,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    end_dt,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query KVOperationsSummary($accountTag: string!, $filter: AccountKVOperationsAdaptiveGroupsFilter_InputObject) {
       viewer {
@@ -101,13 +111,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
         "filter": {"AND": [{"datetimeHour_leq": end_dt, "datetimeHour_geq": start_dt}]},
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_kv_data = json.loads(_resp_raw.text)
+    json_kv_data = json.loads(_resp_raw)
     return (json_kv_data,)
 
 
@@ -126,18 +139,26 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    json,
+    pd,
+    urllib,
+    urlopen,
+):
     # Before processing the GraphQL results, we fetch the KV info first so we can merge the info after processing
     # If results are incomplete, this represents the total number of pages we request
     _MAX_PAGE_REQUESTS = 5
 
     # Endpoint to get all KV name and Ids
-    main_call = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces"
-    _api_resp = requests.get(
-        main_call,
-        params={"per_page": 100},
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-    ).text
+    _main_call = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces"
+    _params = {"per_page": 100}
+    _curr_call = _main_call + '?' + urllib.parse.urlencode(_params)
+    _request = Request(_curr_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _api_resp = urlopen(_request).read()
     kv_info = pd.DataFrame(json.loads(_api_resp)["result"])
 
     # Each API GET request can fetch at most 100 rows, if there are more pages
@@ -150,11 +171,10 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
         )
 
         for _page in range(2, _page_upper_bound):
-            _api_resp = requests.get(
-                main_call,
-                params={"per_page": 100, "page": _page},
-                headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-            ).text
+            _params = {"per_page": 100, "page": _page}
+            _curr_call = _main_call + '?' + urllib.parse.urlencode(_params)
+            _request = Request(_curr_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+            _api_resp = urlopen(_request).read()
             _curr_results = pd.DataFrame(json.loads(_api_resp)["result"])
             kv_info = pd.concat([kv_info, _curr_results])
 
@@ -363,7 +383,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    end_dt,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query KVOperationsTime($accountTag: string!, $filter: AccountKVOperationsAdaptiveGroupsFilter_InputObject) {
       viewer {
@@ -388,13 +417,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
         "filter": {"AND": [{"datetimeHour_leq": end_dt, "datetimeHour_geq": start_dt}]},
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_kv_time_data = json.loads(_resp_raw.text)
+    json_kv_time_data = json.loads(_resp_raw)
     return (json_kv_time_data,)
 
 
