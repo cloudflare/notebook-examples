@@ -182,8 +182,8 @@ def _(CF_API_TOKEN, HOSTNAME, Request, account_id, json, pd, urllib, urlopen):
     _zone_call = f"{HOSTNAME}/client/v4/zones"
     _params = {"per_page": 50, "account.id": account_id}
     _zone_call = _zone_call + '?' + urllib.parse.urlencode(_params)
-    _request = Request(_zone_call, headers={'Authorization': 'Bearer {}'.format(CF_API_TOKEN)})
-    _api_resp = urlopen(_request, headers={"Authorization": f"Bearer {CF_API_TOKEN}"}).read()
+    _request = Request(_zone_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _api_resp = urlopen(_request).read()
     _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
 
     # Clean columns
@@ -250,14 +250,12 @@ def _(mo):
     return
 
 
-app._unparsable_cell(
-    r"""
+@app.cell
+def _(ROBOTS_HOST, urlopen):
     # Request robots.txt content
     _headers = {'User-Agent': 'Cloudflare notebooks'}
     content = urlopen(f'https://{ROBOTS_HOST}/robots.txt', headers=_headers).read().decode()
-    """,
-    name="_"
-)
+    return (content,)
 
 
 @app.cell
