@@ -11,8 +11,6 @@ app = marimo.App(
 ####################
 # Helper Functions #
 ####################
-
-# Helper function stubs
 get_accounts = None
 
 
@@ -20,20 +18,19 @@ get_accounts = None
 async def _():
     # Helper Functions - click to view code
     import js
-    import requests  # required for moutils.oauth
+    import json
+    from urllib.request import Request, urlopen
 
     origin = js.eval("self.location?.origin")
     proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}", },
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    return origin, proxy
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
 ###############
@@ -84,22 +81,12 @@ def _(account_id, mo, proxy, token):
 
     import altair as alt
     from datetime import datetime, timedelta
-    import json
     import pandas as pd
 
     CF_ACCOUNT_ID = account_id
     CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
     HOSTNAME = proxy
-    return (
-        CF_ACCOUNT_ID,
-        CF_API_TOKEN,
-        HOSTNAME,
-        alt,
-        datetime,
-        json,
-        pd,
-        timedelta,
-    )
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, alt, datetime, pd, timedelta
 
 
 @app.cell
@@ -119,15 +106,23 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, json, pd, requests):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    json,
+    pd,
+    urllib,
+    urlopen,
+):
     # Endpoint to get list of zones belonging to the selected account
     # Warning: this will fetch at most 50 zones
-    main_call = f"{HOSTNAME}/client/v4/zones"
-    _api_resp = requests.get(
-        main_call,
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        params={"per_page": 50, "account.id": CF_ACCOUNT_ID},
-    ).text
+    _main_call = f"{HOSTNAME}/client/v4/zones"
+    _params = {"per_page": 50, "account.id": CF_ACCOUNT_ID}
+    _api_call = _main_call + '?' + urllib.parse.urlencode(_params)
+    _request = Request(_api_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _api_resp = urlopen(_request).read()
     _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
 
     # Clean columns
@@ -180,7 +175,16 @@ def _(account_zones, datetime, timedelta):
 
 
 @app.cell
-def _(CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt, zone_tag):
+def _(
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    end_dt,
+    json,
+    start_dt,
+    urlopen,
+    zone_tag,
+):
     _QUERY_STR = """
     query GetZoneAnalytics($zoneTag: string, $since: string, $until: string) {
       viewer {
@@ -246,13 +250,16 @@ def _(CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt, zone_tag):
     """
     _QUERY_VARIABLES = {"zoneTag": zone_tag, "since": start_dt, "until": end_dt}
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_analytics = json.loads(_resp_raw.text)
+    json_analytics = json.loads(_resp_raw)
     return (json_analytics,)
 
 
@@ -398,10 +405,11 @@ def _(
     CF_API_TOKEN,
     HOSTNAME,
     HTTP_STATUS_CODE,
+    Request,
     end_dt,
     json,
-    requests,
     start_dt,
+    urlopen,
     zone_tag,
 ):
     _QUERY_STR = """
@@ -509,13 +517,16 @@ def _(
         "order": "count_DESC",
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_dict_filtered = json.loads(_resp_raw.text)
+    json_dict_filtered = json.loads(_resp_raw)
     return (json_dict_filtered,)
 
 

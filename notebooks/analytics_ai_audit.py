@@ -11,8 +11,6 @@ app = marimo.App(
 ####################
 # Helper Functions #
 ####################
-
-# Helper function stubs
 get_accounts = None
 
 
@@ -20,20 +18,19 @@ get_accounts = None
 async def _():
     # Helper Functions - click to view code
     import js
-    import requests  # required for moutils.oauth
+    import json
+    from urllib.request import Request, urlopen
 
     origin = js.eval("self.location?.origin")
     proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}", },
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    return origin, proxy
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
 ###############
@@ -84,7 +81,6 @@ def _(account_id, mo, proxy, token):
 
     import altair as alt
     from datetime import datetime, timedelta
-    import json
     import pandas as pd
     import warnings
 
@@ -100,7 +96,6 @@ def _(account_id, mo, proxy, token):
         RobotFileParser,
         alt,
         datetime,
-        json,
         pd,
         timedelta,
         unquote,
@@ -163,14 +158,13 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(CF_API_TOKEN, HOSTNAME, account_id, json, pd, requests):
+def _(CF_API_TOKEN, HOSTNAME, Request, account_id, json, pd, urllib, urlopen):
     # Fetch a sample of the zones in the account
     _zone_call = f"{HOSTNAME}/client/v4/zones"
-    _api_resp = requests.get(
-        _zone_call,
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        params={"per_page": 50, "account.id": account_id},
-    ).text
+    _params = {"per_page": 50, "account.id": account_id}
+    _zone_call = _zone_call + '?' + urllib.parse.urlencode(_params)
+    _request = Request(_zone_call, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _api_resp = urlopen(_request).read()
     _res_raw = pd.DataFrame(json.loads(_api_resp)["result"])
 
     # Clean columns
@@ -196,16 +190,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_API_TOKEN, HOSTNAME, mo, requests, zone_form):
+def _(CF_API_TOKEN, HOSTNAME, Request, json, mo, urlopen, zone_form):
     # Zone Id of the zone to obtain data from
     mo.stop(zone_form.value is None, 'Please submit a zone ID above first')
     SELECTED_ZONE = zone_form.value
 
     # Endpoint to get zone info
-    main_call = f'{HOSTNAME}/client/v4/zones/{SELECTED_ZONE}'
-    _api_resp = requests.get(main_call,
-                             headers={'Authorization': 'Bearer {}'.format(CF_API_TOKEN)})
-    _api_resp_json = _api_resp.json()
+    _main_call = f'{HOSTNAME}/client/v4/zones/{SELECTED_ZONE}'
+    _request = Request(_main_call, headers={'Authorization': 'Bearer {}'.format(CF_API_TOKEN)})
+    _api_resp = urlopen(_request)
+    _api_resp_json = json.load(_api_resp)
 
     if not _api_resp_json['success']:
         print(f'Failed to fetch zone info (status code {_api_resp.status_code}). Received the following errors:')
@@ -238,10 +232,10 @@ def _(mo):
 
 
 @app.cell
-def _(ROBOTS_HOST, requests):
+def _(ROBOTS_HOST, urlopen):
     # Request robots.txt content
-    headers = {'User-Agent': 'Cloudflare notebooks'}
-    content = requests.get(f'https://{ROBOTS_HOST}/robots.txt', headers=headers).text
+    _headers = {'User-Agent': 'Cloudflare notebooks'}
+    content = urlopen(f'https://{ROBOTS_HOST}/robots.txt', headers=_headers).read().decode()
     return (content,)
 
 
@@ -301,12 +295,13 @@ def _(
     CF_API_TOKEN,
     HOSTNAME,
     ROBOTS_HOST,
+    Request,
     SELECTED_ZONE,
     end_dt,
     filters,
     json,
-    requests,
     start_dt,
+    urlopen,
 ):
     _QUERY_STR = '''
     {
@@ -348,11 +343,16 @@ def _(
                                     {"OR": filters}]
                         }}
 
-    _resp_raw = requests.post(f'{HOSTNAME}/client/v4/graphql',
-                              headers={'Authorization': 'Bearer {}'.format(CF_API_TOKEN)},
-                              json={'query': _QUERY_STR, 'variables': _QUERY_VARIABLES})
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_audit_data = json.loads(_resp_raw.text)
+    json_audit_data = json.loads(_resp_raw)
     return (json_audit_data,)
 
 
@@ -407,12 +407,13 @@ def _(
     CF_API_TOKEN,
     HOSTNAME,
     ROBOTS_HOST,
+    Request,
     SELECTED_ZONE,
     end_dt,
     filters,
     json,
-    requests,
     start_dt,
+    urlopen,
 ):
     _QUERY_STR = '''
     {
@@ -452,11 +453,16 @@ def _(
                                     {"OR": filters}]
                         }}
 
-    _resp_raw = requests.post(f'{HOSTNAME}/client/v4/graphql',
-                              headers={'Authorization': 'Bearer {}'.format(CF_API_TOKEN)},
-                              json={'query': _QUERY_STR, 'variables': _QUERY_VARIABLES})
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_audit_ts_data = json.loads(_resp_raw.text)
+    json_audit_ts_data = json.loads(_resp_raw)
     return (json_audit_ts_data,)
 
 

@@ -11,8 +11,6 @@ app = marimo.App(
 ####################
 # Helper Functions #
 ####################
-
-# Helper function stubs
 get_accounts = None
 
 
@@ -20,20 +18,19 @@ get_accounts = None
 async def _():
     # Helper Functions - click to view code
     import js
-    import requests  # required for moutils.oauth
+    import json
+    from urllib.request import Request, urlopen
 
     origin = js.eval("self.location?.origin")
     proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}", },
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    return origin, proxy
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
 ###############
@@ -82,8 +79,9 @@ def _(df, accounts, radio, mo):
 def _():
     import marimo as mo
     import pandas as pd
-    import requests
-    return mo, pd, requests
+    from urllib.request import Request, urlopen
+    import json
+    return Request, json, mo, pd, urlopen
 
 
 @app.cell
@@ -132,12 +130,13 @@ def _(mo):
 
 
 @app.cell
-def _(CF_API_TOKEN, URL, pd, requests):
+def _(CF_API_TOKEN, Request, URL, json, pd, urlopen):
     # Send GET query
-    api_resp = requests.get(URL, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    _request = Request(URL, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    api_resp = urlopen(_request)
 
     # Results handling
-    api_resp_json = api_resp.json()
+    api_resp_json = json.load(api_resp)
     if api_resp_json["success"]:
         print("Successfully fetched D1 dataset list")
         d1_datasets = pd.DataFrame(api_resp_json["result"])
@@ -186,16 +185,20 @@ def _(mo):
 
 
 @app.cell
-def _(HOSTNAME, requests):
+def _(HOSTNAME, Request, json, urlopen):
     # Perform a query and return results as json
     # Raises error otherwise, prints which errors were obtained
     def query_d1(account_id, database_id, token, query):
         url = f"{HOSTNAME}/client/v4/accounts/{account_id}/d1/database/{database_id}/query"
-        payload = dict(sql=query)
-        query_resp = requests.post(
-            url, headers={"Authorization": "Bearer {}".format(token)}, json=payload
-        )
-        query_resp_json = query_resp.json()
+        payload = json.dumps({'sql': query}).encode()
+        request = Request(url,
+                          headers={"Authorization": "Bearer {}".format(token),
+                                   "Accept": "application/json",
+                                   "Content-Type": "application/json"},
+                          data=payload,
+                          method='POST')
+        query_resp = urlopen(request)
+        query_resp_json = json.load(query_resp)
 
         if query_resp_json["success"]:
             return query_resp_json["result"]

@@ -11,8 +11,6 @@ app = marimo.App(
 ####################
 # Helper Functions #
 ####################
-
-# Helper function stubs
 get_accounts = None
 
 
@@ -20,20 +18,19 @@ get_accounts = None
 async def _():
     # Helper Functions - click to view code
     import js
-    import requests  # required for moutils.oauth
+    import json
+    from urllib.request import Request, urlopen
 
     origin = js.eval("self.location?.origin")
     proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}", },
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    return origin, proxy
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
 ###############
@@ -43,7 +40,6 @@ async def _():
 def _(origin):
     # Login cell - click to view code
     from moutils.oauth import PKCEFlow
-
     df = PKCEFlow(
         provider="cloudflare",
         client_id="ec85d9cd-ff12-4d96-a376-432dbcf0bbfc",
@@ -56,10 +52,11 @@ def _(origin):
 
 
 @app.cell()
-async def _(mo, df):
+async def _(mo, df, get_accounts):
     # 1) After login, Run ▶ this cell to get your API token and accounts
     # 2) Select a specific Cloudflare account below
     # 3) Start coding
+
     print(f"df.access_token: {df.access_token}")
     accounts = await get_accounts(df.access_token)
     radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")

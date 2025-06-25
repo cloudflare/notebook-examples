@@ -11,8 +11,6 @@ app = marimo.App(
 ####################
 # Helper Functions #
 ####################
-
-# Helper function stubs
 get_accounts = None
 
 
@@ -20,20 +18,19 @@ get_accounts = None
 async def _():
     # Helper Functions - click to view code
     import js
-    import requests  # required for moutils.oauth
+    import json
+    from urllib.request import Request, urlopen
 
     origin = js.eval("self.location?.origin")
     proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}", },
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    return origin, proxy
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
 ###############
@@ -84,22 +81,12 @@ def _(account_id, mo, proxy, token):
 
     import altair as alt
     from datetime import datetime, timedelta
-    import json
     import pandas as pd
 
     CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy
-    return (
-        CF_ACCOUNT_ID,
-        CF_API_TOKEN,
-        HOSTNAME,
-        alt,
-        datetime,
-        json,
-        pd,
-        timedelta,
-    )
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, alt, datetime, pd, timedelta
 
 
 @app.cell
@@ -123,7 +110,7 @@ def _(mo):
 
 
 @app.cell
-def _(CF_API_TOKEN, HOSTNAME, requests):
+def _(CF_API_TOKEN, HOSTNAME, Request, json, urlopen):
     # Class used to prompt a given model
     class AIClient:
         def __init__(self, cf_account, cf_token, model_name):
@@ -137,17 +124,17 @@ def _(CF_API_TOKEN, HOSTNAME, requests):
         # Json info varies from model to model, so it must be provided as input
         def prompt(self, payload):
             endpoint = f"{HOSTNAME}/client/v4/accounts/{self.cf_account}/ai/run/{self.model_name}"
-            resp = requests.post(
-                endpoint,
-                json=payload,
-                headers={
-                    "Authorization": "Bearer {}".format(CF_API_TOKEN),
-                    "Content-Type": "application/json",
-                },
-            )
+            req = Request(endpoint,
+                          headers={
+                              "Authorization": "Bearer {}".format(CF_API_TOKEN),
+                              "Content-Type": "application/json",
+                          },
+                          data=json.dumps(payload),
+                          method='POST')
+            resp = urlopen(req)
 
-            if resp.status_code == 200:
-                return resp.json()
+            if resp.getcode() == 200:
+                return json.load(resp)
             else:
                 print(resp.text)
                 resp.raise_for_status()
@@ -236,7 +223,7 @@ def _(ai_session, mo):
     ai_session.change_model("@cf/meta/m2m100-1.2b")
 
     # Text to be translated
-    _text = "Este é um exemplo de texto a ser traduzido de Português a Inglês usando modelos AI com Cloudflare"
+    _text = "Este é um exemplo de texto a ser traduzido para Inglês usando modelos AI com Cloudflare"
     # The language text is currently in
     _source_lang = "pt"
     # The language is to be translated into
@@ -286,7 +273,16 @@ def _(datetime, timedelta):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    end_dt,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query GetModelUsageOverTime($accountTag: string, $filter: filter) {
       viewer {
@@ -312,13 +308,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, end_dt, json, requests, start_dt):
         "dateEnd": end_dt,
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_object_model_data = json.loads(_resp_raw.text)
+    json_object_model_data = json.loads(_resp_raw)
     return (json_object_model_data,)
 
 

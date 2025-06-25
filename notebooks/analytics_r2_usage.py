@@ -11,8 +11,6 @@ app = marimo.App(
 ####################
 # Helper Functions #
 ####################
-
-# Helper function stubs
 get_accounts = None
 
 
@@ -20,20 +18,19 @@ get_accounts = None
 async def _():
     # Helper Functions - click to view code
     import js
-    import requests  # required for moutils.oauth
+    import json
+    from urllib.request import Request, urlopen
 
     origin = js.eval("self.location?.origin")
     proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}", },
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    return origin, proxy
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
 ###############
@@ -84,13 +81,12 @@ def _(account_id, mo, proxy, token):
 
     import altair as alt
     from datetime import datetime
-    import json
     import pandas as pd
 
     CF_ACCOUNT_ID = account_id
     CF_API_TOKEN = token  # or a custom token from dash.cloudflare.com
     HOSTNAME = proxy
-    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, alt, datetime, json, pd
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, alt, datetime, pd
 
 
 @app.cell
@@ -174,7 +170,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query BucketLevelMetricsQuery($accountTag: string!, $limit: uint64!, $queryStart: Date) {
       viewer {
@@ -210,13 +215,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         "queryStart": start_dt,
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_object_rank_data = json.loads(_resp_raw.text)
+    json_object_rank_data = json.loads(_resp_raw)
     return (json_object_rank_data,)
 
 
@@ -326,7 +334,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query BucketLevelMetricsQuery($accountTag: string!, $limit: uint64!, $queryStart: Date) {
       viewer {
@@ -362,13 +379,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         "queryStart": start_dt,
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_size_rank_data = json.loads(_resp_raw.text)
+    json_size_rank_data = json.loads(_resp_raw)
     return (json_size_rank_data,)
 
 
@@ -480,7 +500,16 @@ def _(alt, datetime, df_top_size_ia, start_dt):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query getR2Requests($accountTag: string,
                         $limit: $limit: uint64!,
@@ -600,13 +629,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         },
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_request_rank_data = json.loads(_resp_raw.text)
+    json_request_rank_data = json.loads(_resp_raw)
     return (json_request_rank_data,)
 
 
@@ -861,7 +893,16 @@ def _(mo):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
+def _(
+    CF_ACCOUNT_ID,
+    CF_API_TOKEN,
+    HOSTNAME,
+    Request,
+    TOP_N,
+    json,
+    start_dt,
+    urlopen,
+):
     _QUERY_STR = """
     query getR2Requests($accountTag: string,
                         $classAOpsFilter: AccountR2OperationsAdaptiveGroupsFilter_InputObject,
@@ -956,13 +997,16 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, TOP_N, json, requests, start_dt):
         "storageFilter": {"AND": [{"datetime_geq": start_dt}]},
     }
 
-    _resp_raw = requests.post(
-        f"{HOSTNAME}/client/v4/graphql",
-        headers={"Authorization": f"Bearer {CF_API_TOKEN}"},
-        json={"query": _QUERY_STR, "variables": _QUERY_VARIABLES},
-    )
+    _data = json.dumps({"query": _QUERY_STR, "variables": _QUERY_VARIABLES}).encode()
+    _request = Request(f"{HOSTNAME}/client/v4/graphql",
+                       headers={"Authorization": f"Bearer {CF_API_TOKEN}",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                       data=_data,
+                       method='POST')
+    _resp_raw = urlopen(_request).read()
 
-    json_metric_data = json.loads(_resp_raw.text)
+    json_metric_data = json.loads(_resp_raw)
     return (json_metric_data,)
 
 

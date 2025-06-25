@@ -11,8 +11,6 @@ app = marimo.App(
 ####################
 # Helper Functions #
 ####################
-
-# Helper function stubs
 get_accounts = None
 
 
@@ -20,20 +18,19 @@ get_accounts = None
 async def _():
     # Helper Functions - click to view code
     import js
-    import requests  # required for moutils.oauth
+    import json
+    from urllib.request import Request, urlopen
 
     origin = js.eval("self.location?.origin")
     proxy = "https://api-proxy.notebooks.cloudflare.com"
 
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}", },
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts", headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
-    return origin, proxy
+    return js, json, Request, urlopen, origin, proxy, get_accounts
 
 
 ###############
@@ -89,7 +86,7 @@ def _(account_id, mo, proxy, token):
 
 
 @app.cell
-def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, mo, requests):
+def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, Request, json, mo, urlopen):
 
     WORKERS_AI_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 
@@ -100,9 +97,11 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, mo, requests):
         # For more details see: https://developers.cloudflare.com/workers-ai/get-started/rest-api/
         # Account must have Workers AI enabled, such as "Edge Notebooks"
         url = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/{WORKERS_AI_MODEL}"
-        headers = {"Authorization": f"Bearer {CF_API_TOKEN}"}
+        headers = {"Authorization": f"Bearer {CF_API_TOKEN}",
+                   "Accept": "application/json",
+                   "Content-Type": "application/json"}
 
-        payload = {
+        payload = json.dumps({
             "messages": [
                 {
                     "role": "system",  # ...tells the model how to behave (system prompt).
@@ -113,10 +112,11 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, mo, requests):
                     "content": prompt.value,
                 },
             ]
-        }
-
-        api_response = requests.post(url, json=payload, headers=headers)
-        model_result = api_response.json()
+        })
+        request = Request(url, headers=headers, data=payload,
+                          method='POST')
+        api_response = urlopen(request)
+        model_result = json.load(api_response)
 
         # We are not handling any possible errors, but only because this is just an example.
         return model_result["result"]["response"]
