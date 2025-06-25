@@ -11,7 +11,6 @@ def _():
     # Helper Functions
     import marimo as mo
     import js
-    import requests
     import urllib
     from urllib.request import Request, urlopen
     import json
@@ -55,10 +54,9 @@ def _():
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
         token = token or await get_token()
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}"},
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts",
+                          headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
     def login():

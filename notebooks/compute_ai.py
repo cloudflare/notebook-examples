@@ -11,9 +11,9 @@ def _():
     # Helper Functions
     import marimo as mo
     import js
-    import requests
     import urllib
     from urllib.request import Request, urlopen
+    import json
 
     proxy = "https://examples-api-proxy.notebooks.cloudflare.com"
 
@@ -54,10 +54,9 @@ def _():
     async def get_accounts(token):
         # Example API request to list available Cloudflare accounts
         token = token or await get_token()
-        res = requests.get(
-            f"{proxy}/client/v4/accounts",
-            headers={"Authorization": f"Bearer {token}"},
-        ).json()
+        request = Request(f"{proxy}/client/v4/accounts",
+                          headers={"Authorization": f"Bearer {token}"})
+        res = json.load(urlopen(request))
         return res.get("result", []) or []
 
     def login():
@@ -69,7 +68,7 @@ def _():
 
     # Start Login Form
     mo.iframe(login(), height="1px")
-    return Request, get_accounts, get_token, mo, proxy, urlopen
+    return Request, get_accounts, get_token, json, mo, proxy, urlopen
 
 
 @app.cell
@@ -98,22 +97,12 @@ def _(account_id, mo, proxy, token):
 
     import altair as alt
     from datetime import datetime, timedelta
-    import json
     import pandas as pd
 
     CF_ACCOUNT_ID = account_id  # After login, selected from list above
     CF_API_TOKEN = token  # Or a custom token from dash.cloudflare.com
     HOSTNAME = proxy
-    return (
-        CF_ACCOUNT_ID,
-        CF_API_TOKEN,
-        HOSTNAME,
-        alt,
-        datetime,
-        json,
-        pd,
-        timedelta,
-    )
+    return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, alt, datetime, pd, timedelta
 
 
 @app.cell
