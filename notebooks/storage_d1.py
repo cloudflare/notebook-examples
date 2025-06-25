@@ -1,11 +1,83 @@
-
-
 import marimo
 
-__generated_with = "0.13.2"
-app = marimo.App(width="full", app_title="Cloudflare Notebook")
+__generated_with = "0.14.7"
+
+app = marimo.App(
+    width="full",
+    auto_download=["ipynb", "html"],
+    app_title="Cloudflare Notebook",
+)
+
+####################
+# Helper Functions #
+####################
+
+# Helper function stubs
+get_accounts = None
 
 
+@app.cell(hide_code=True)
+async def _():
+    # Helper Functions - click to view code
+    import js
+    import requests  # required for moutils.oauth
+
+    origin = js.eval("self.location?.origin")
+    proxy = "https://api-proxy.notebooks.cloudflare.com"
+
+    async def get_accounts(token):
+        # Example API request to list available Cloudflare accounts
+        res = requests.get(
+            f"{proxy}/client/v4/accounts",
+            headers={"Authorization": f"Bearer {token}", },
+        ).json()
+        return res.get("result", []) or []
+
+    return origin, proxy
+
+
+###############
+# Login Cells #
+###############
+@app.cell(hide_code=True)
+def _(origin):
+    # Login cell - click to view code
+    from moutils.oauth import PKCEFlow
+
+    df = PKCEFlow(
+        provider="cloudflare",
+        client_id="ec85d9cd-ff12-4d96-a376-432dbcf0bbfc",
+        logout_url=f"{origin}/oauth2/revoke",
+        redirect_uri=f"{origin}/oauth/callback",
+        token_url=f"{origin}/oauth2/token",
+    )
+    df
+    return PKCEFlow, df, None, None
+
+
+@app.cell()
+async def _(mo, df):
+    # 1) After login, Run ▶ this cell to get your API token and accounts
+    # 2) Select a specific Cloudflare account below
+    # 3) Start coding
+    print(f"df.access_token: {df.access_token}")
+    accounts = await get_accounts(df.access_token)
+    radio = mo.ui.radio(options=[a["name"] for a in accounts], label="Select Account")
+    return accounts, radio
+
+
+@app.cell(hide_code=True)
+def _(df, accounts, radio, mo):
+    # Run ▶ this cell to select a specific Cloudflare account
+    account_name = radio.value if radio else None
+    account_id = (next((a["id"] for a in accounts if a["name"] == account_name), None) if accounts else None)  # noqa: E501
+    mo.hstack([radio, mo.md(f"**Variables**  \n**token:** {df.access_token}  \n**account_name:** {account_name or 'None'}  \n**account_id:** {account_id or 'None'}"),])  # noqa: E501
+    return
+
+
+##################
+# Notebook Cells #
+##################
 @app.cell
 def _():
     import marimo as mo
@@ -37,25 +109,9 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
-    account_form = mo.ui.text(label="Selected account ID:").form()
-    account_form
-    return (account_form,)
-
-
-@app.cell
-def _(mo):
-    token_form = mo.ui.text(label="Provided token:").form()
-    token_form
-    return (token_form,)
-
-
-@app.cell
-def _(account_form, mo, token_form):
-    mo.stop(account_form.value is None or token_form.value is None, 'Please submit an account ID and token above first')
-
-    CF_ACCOUNT_ID = account_form.value
-    CF_API_TOKEN = token_form.value
+def _(account_id, df):
+    CF_ACCOUNT_ID = account_id
+    CF_API_TOKEN = df.access_token
     HOSTNAME = "https://examples-api-proxy.notebooks.cloudflare.com"  # using notebooks.cloudflare.com proxy
     URL = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/d1/database"
     return CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, URL

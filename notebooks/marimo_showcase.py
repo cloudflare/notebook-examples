@@ -1,7 +1,7 @@
 # Source: https://marimo.io/p/@marimo/embedding-visualizer
 import marimo
 
-__generated_with = "0.13.2"
+__generated_with = "0.14.7"
 
 app = marimo.App(
     width="full",
