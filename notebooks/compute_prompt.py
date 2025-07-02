@@ -96,7 +96,6 @@ def _(CF_ACCOUNT_ID, CF_API_TOKEN, HOSTNAME, Request, json, mo, urlopen):
             return "**Please ask a question using the form above.** 👆"
 
         # For more details see: https://developers.cloudflare.com/workers-ai/get-started/rest-api/
-        # Account must have Workers AI enabled, such as "Edge Notebooks"
         url = f"{HOSTNAME}/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/{WORKERS_AI_MODEL}"
         headers = {"Authorization": f"Bearer {CF_API_TOKEN}",
                    "Accept": "application/json",
