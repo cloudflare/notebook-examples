@@ -8,10 +8,6 @@ notebooks:
     description: "Get started with your first interactive notebook."
 
   # Analytics
-  - file: analytics_zone_logs.html
-    title: "Analytics: Zone Logs Query"
-    description: "Query zone analytics logs to extract insights."
-
   - file: analytics_ai_audit.html
     title: "Analytics: AI Audit stats"
     description: "Check zone traffic by AI crawler."
@@ -19,6 +15,10 @@ notebooks:
   - file: analytics_r2_usage.html
     title: "Analytics: R2 Usage"
     description: "Fetch and rank usage metrics for R2 storage and requests."
+
+  - file: analytics_zone_logs.html
+    title: "Analytics: Zone Logs Query"
+    description: "Query zone analytics logs to extract insights."
 
   # Compute
   - file: compute_ai.html

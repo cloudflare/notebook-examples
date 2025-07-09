@@ -25,8 +25,12 @@
         margin: 20px auto;
       }
       @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
@@ -42,31 +46,48 @@
         var params = new URLSearchParams(window.location.search);
         var code = params.get("code");
         var state = params.get("state");
-        
+
         if (code && state) {
           try {
             // Decode the state parameter (base64url encoded)
-            var decodedState = atob(state.replace(/-/g, '+').replace(/_/g, '/'));
+            var decodedState = atob(
+              state.replace(/-/g, "+").replace(/_/g, "/")
+            );
             var stateData = JSON.parse(decodedState);
-            
+
             // Extract the href from the state
             var redirectUrl = new URL(stateData.href);
-            
+
             // Add all current query parameters to the redirect URL
             for (var [key, value] of params.entries()) {
               redirectUrl.searchParams.set(key, value);
             }
+
+            // Store the OAuth data in localStorage and close the popup
+            console.log("Storing OAuth data in localStorage...");
+            localStorage.setItem("__pkce_auth_code", code);
+            localStorage.setItem("__pkce_state", state);
             
-            console.log("Redirecting to:", redirectUrl.toString());
-            window.location.href = redirectUrl.toString();
+            // Also store all params for completeness
+            for (var [key, value] of params.entries()) {
+              localStorage.setItem("__pkce_" + key, value);
+            }
             
+            console.log("OAuth data stored, closing popup in a moment...");
+            document.getElementById("content").innerHTML =
+              "<div class='spinner'></div><div class='message'>Login successful! This tab will close in a moment...</div>";
+            setTimeout(function () {
+              window.close();
+            }, 1000);
           } catch (error) {
             console.error("Error processing state parameter:", error);
-            document.getElementById("content").innerHTML = 
-              "<div class='message'>Error processing callback: " + error.message + "</div>";
+            document.getElementById("content").innerHTML =
+              "<div class='message'>Error processing callback: " +
+              error.message +
+              "</div>";
           }
         } else {
-          document.getElementById("content").innerHTML = 
+          document.getElementById("content").innerHTML =
             "<div class='message'>Invalid callback parameters</div>";
         }
       } else {
@@ -78,14 +99,6 @@
           window.location.href = window.top.location.origin;
         }
       }
-
-      // Handle storage events for popup-based login
-      window.addEventListener("storage", function (e) {
-        if (e.key === "login_success" && e.newValue === "true") {
-          localStorage.removeItem("login_success");
-          // For popup-based login, the parent window will handle the callback
-        }
-      });
     </script>
   </body>
 </html>
