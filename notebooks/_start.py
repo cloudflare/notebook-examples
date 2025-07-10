@@ -10,7 +10,7 @@
 # ///
 import marimo
 
-__generated_with = "0.11.26"
+__generated_with = "0.14.10"
 app = marimo.App(
     width="full",
     app_title="Cloudflare Notebook",
