@@ -1,0 +1,20 @@
+name: Deploy to Cloudflare Pages
+
+on: [push, pull_request]
+
+jobs:
+  deploy-pages:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: make export
+      - uses: cloudflare/wrangler-action@v3
+        id: deploy
+        with:
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy export --project-name=notebook-examples
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

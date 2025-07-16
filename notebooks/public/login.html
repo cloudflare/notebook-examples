@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>OAuth Callback Handler</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 50px;
+        background-color: #f5f5f5;
+      }
+      .message {
+        color: #333;
+        font-size: 18px;
+        margin: 20px 0;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #f38020;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 2s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .error {
+        color: #d32f2f;
+        background-color: #ffebee;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .success {
+        color: #2e7d32;
+        background-color: #e8f5e8;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div class="spinner"></div>
+      <div class="message">Processing OAuth callback...</div>
+    </div>
+
+    <script>
+      // Add error handling for the entire script
+      window.addEventListener('error', function(e) {
+        console.error('Global error:', e.error);
+        document.getElementById('content').innerHTML = 
+          '<div class="error">JavaScript Error: ' + e.error.message + '</div>';
+      });
+
+      console.log("OAuth callback handler loaded");
+      console.log("URL search params:", window.location.search);
+      
+      try {
+        // Handle OAuth callback - check for callback parameters on page load
+        if (window.location.search.indexOf("code") !== -1) {
+          console.log("Found 'code' parameter in URL");
+          var params = new URLSearchParams(window.location.search);
+          var code = params.get("code");
+          var state = params.get("state");
+          
+          console.log("Code:", code ? code.substring(0, 20) + "..." : "null");
+          console.log("State:", state ? state.substring(0, 20) + "..." : "null");
+
+          if (code && state) {
+            console.log("Both code and state found, processing callback...");
+            
+            // Decode the state parameter (base64url encoded)
+            console.log("Decoding state parameter...");
+            var decodedState = atob(
+              state.replace(/-/g, "+").replace(/_/g, "/")
+            );
+            console.log("Decoded state:", decodedState);
+            var stateData = JSON.parse(decodedState);
+            console.log("Parsed state data:", stateData);
+
+            // Extract the href from the state and validate it
+            var redirectUrl;
+            if (stateData.href && stateData.href.trim() !== "") {
+              console.log("Original href from state:", stateData.href);
+              
+              // Check if the href points to a valid path
+              var hrefUrl = new URL(stateData.href);
+              var path = hrefUrl.pathname;
+              
+              // If the path contains 'pkceflow_login' or doesn't exist, redirect to _start
+              if (path.includes('pkceflow_login') || path.includes('login')) {
+                console.log("Invalid or login path detected, redirecting to _start");
+                redirectUrl = new URL(hrefUrl.origin + '/html-wasm/_start');
+              } else {
+                redirectUrl = new URL(stateData.href);
+              }
+              
+              // Add all current query parameters to the redirect URL
+              for (var [key, value] of params.entries()) {
+                redirectUrl.searchParams.set(key, value);
+              }
+              console.log("Final redirect URL:", redirectUrl.toString());
+            } else {
+              // If no href, just use the current origin with _start
+              redirectUrl = new URL(window.location.origin + '/html-wasm/_start');
+              console.log("No href in state, using _start:", redirectUrl.toString());
+            }
+
+            // Store the OAuth data in localStorage
+            console.log("Storing OAuth data in localStorage...");
+            try {
+              localStorage.setItem("__pkce_auth_code", code);
+              localStorage.setItem("__pkce_state", state);
+              
+              // Also store all params for completeness
+              for (var [key, value] of params.entries()) {
+                localStorage.setItem("__pkce_" + key, value);
+              }
+              console.log("OAuth data stored successfully");
+            } catch (storageError) {
+              console.error("Error storing in localStorage:", storageError);
+            }
+            
+            console.log("OAuth data stored, attempting to close window...");
+            document.getElementById("content").innerHTML =
+              "<div class='spinner'></div><div class='message'>Login successful! This tab will close in a moment...</div>";
+            
+            // Try to close the window, but with a shorter timeout and better fallback
+            setTimeout(function () {
+              console.log("Attempting to close window...");
+              try {
+                // Check if this is a popup window
+                if (window.opener) {
+                  console.log("This is a popup window, attempting to close...");
+                  window.close();
+                  console.log("Window close attempted");
+                } else {
+                  console.log("Not a popup window, redirecting instead...");
+                  window.location.href = redirectUrl.toString();
+                }
+              } catch (closeError) {
+                console.error("Error closing window:", closeError);
+                // If we can't close the window, redirect instead
+                console.log("Redirecting instead of closing...");
+                window.location.href = redirectUrl.toString();
+              }
+            }, 500); // Reduced timeout to 500ms
+            
+          } else {
+            console.log("Missing code or state parameter");
+            document.getElementById("content").innerHTML =
+              "<div class='error'>Invalid callback parameters</div>";
+          }
+        } else {
+          console.log("No 'code' parameter found in URL");
+          // No callback parameters, redirect to original URL
+          var originalUrl = localStorage.getItem("original_url");
+          if (originalUrl) {
+            console.log("Redirecting to original URL:", originalUrl);
+            window.location.href = originalUrl;
+          } else {
+            console.log("No original URL found, redirecting to _start");
+            window.location.href = window.location.origin + '/html-wasm/_start';
+          }
+        }
+      } catch (error) {
+        console.error("Error in OAuth callback processing:", error);
+        document.getElementById("content").innerHTML =
+          "<div class='error'>Error processing callback: " + error.message + "</div>";
+      }
+    </script>
+  </body>
+</html>

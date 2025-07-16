@@ -8,11 +8,21 @@
 *~
 
 .vscode
+.wrangler
 
 *.pyc
 *.pyo
 *.env
 *.venv
+__marimo__
 __pycache__
 
 export
+node_modules
+
+# uv-related files
+notebooks/.python-version
+notebooks/README.md
+notebooks/pyproject.toml
+notebooks/uv.lock
+main.py

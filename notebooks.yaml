@@ -1,7 +1,52 @@
+# Cloudflare Notebooks Catalog
+# A concise, professional listing of our interactive notebook demos.
+
 notebooks:
-  - file: hello.html
-    title: Hello, World!
-    description: This notebook is simple hello world. It contains a single cell that just prints a string.
-  - file: empty.html
-    title: Empty Notebook
-    description: This notebook does nothing at all. It's here just so the previous one doesn't feel alone.
+  # Getting Started
+  - file: _start.html
+    title: "Get Started: New Notebook"
+    description: "Get started with your first interactive notebook."
+
+  # Analytics
+  - file: analytics_ai_audit.html
+    title: "Analytics: AI Audit stats"
+    description: "Check zone traffic by AI crawler."
+
+  - file: analytics_r2_usage.html
+    title: "Analytics: R2 Usage"
+    description: "Fetch and rank usage metrics for R2 storage and requests."
+
+  - file: analytics_zone_logs.html
+    title: "Analytics: Zone Logs Query"
+    description: "Query zone analytics logs to extract insights."
+
+  # Compute
+  - file: compute_ai.html
+    title: "Compute: Workers AI"
+    description: "Interact with Workers AI prompts and measure model usage."
+
+  - file: compute_prompt.html
+    title: "Compute: Workers AI Self Prompt"
+    description: "Ask questions to a large language model running in Workers AI."
+
+  - file: compute_workers.html
+    title: "Compute: Worker Metrics Comparison"
+    description: "Rank and compare Worker performance by requests, errors, and CPU time."
+
+  # Marimo
+  - file: marimo_showcase.html
+    title: "Marimo: Showcase"
+    description: "Demo different features in Marimo, not specific to Cloudflare"
+
+  # Storage
+  - file: storage_d1.html
+    title: "Storage: D1 Quickstart"
+    description: "Create, populate, and query a D1 database table."
+
+  - file: storage_kv.html
+    title: "Storage: KV Usage Analytics"
+    description: "Fetch and rank request metrics for KV storage."
+
+  - file: storage_r2.html
+    title: "Storage: R2 Quickstart"
+    description: "List objects and download files from R2 storage."
