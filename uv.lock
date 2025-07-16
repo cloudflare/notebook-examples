@@ -503,7 +503,7 @@ requires-dist = [
     { name = "pandas", specifier = "==2.3.1" },
     { name = "polars", specifier = "==1.31.0" },
     { name = "pyyaml", specifier = "==6.0.2" },
-    { name = "requests", specifier = "==2.32.4" },
+    { name = "requests", specifier = "==2.31.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -517,7 +517,7 @@ dev = [
     { name = "pandas", specifier = "==2.3.1" },
     { name = "polars", specifier = "==1.31.0" },
     { name = "pyyaml", specifier = "==6.0.2" },
-    { name = "requests", specifier = "==2.32.4" },
+    { name = "requests", specifier = "==2.31.0" },
 ]
 
 [[package]]
@@ -798,7 +798,7 @@ wheels = [
 
 [[package]]
 name = "requests"
-version = "2.32.4"
+version = "2.31.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },

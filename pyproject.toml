@@ -14,7 +14,7 @@ dependencies = [
     "pandas==2.3.1",
     "polars==1.31.0",
     "pyyaml==6.0.2",
-    "requests==2.32.4",
+    "requests==2.31.0",
 ]
 
 [dependency-groups]
@@ -28,5 +28,5 @@ dev = [
     "pandas==2.3.1",
     "polars==1.31.0",
     "pyyaml==6.0.2",
-    "requests==2.32.4",
+    "requests==2.31.0",
 ]
