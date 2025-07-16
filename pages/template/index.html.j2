@@ -29,7 +29,20 @@
       or querying <a href="https://developers.cloudflare.com/d1/">D1</a> databases. They aren't meant as complete solutions,
       but rather as starting points for your own ideas and explorations.
     </p>
-
+    <p>
+      Each one of these notebooks is served from <a href="https://workers.cloudflare.com/">Cloudflare Workers</a> and runs entirely within your browser,
+      powered by <a href="https://marimo.io">Marimo</a> (you can learn more about it at <a href="https://docs.marimo.io/guides/wasm/">marimo.io</a> and
+      <a href="https://pyodide.org/">pyodide.org</a>). If you wish to run heavier tasks, you may want to consider running them as an application instead.
+    </p>
+    <hr>
+    <p>
+      See our <a href="https://github.com/cloudflare/notebook-examples">open source repository on GitHub</a> to learn more, contribute, and submit feedback!
+    </p>
+    <p>
+      If you have any questions, feel free to join our <a href="https://discord.com/invite/cloudflaredev">Discord server</a>.
+    </p>
+    <br>
+    <h2>Notebooks:</h2>
     <div id="notebooks">
       <ul>
       {%- for nb in notebooks %}
@@ -37,17 +50,6 @@
       {%- endfor %}
       </ul>
     </div>
-
-    <p>
-      Each one of these notebooks is served from <a href="https://workers.cloudflare.com/">Cloudflare Workers</a> and runs entirely within your browser,
-      powered by <a href="https://marimo.io">Marimo</a> (you can learn more about it at <a href="https://docs.marimo.io/guides/wasm/">marimo.io</a> and
-      <a href="https://pyodide.org/">pyodide.org</a>). If you wish to run heavier tasks, you may want to consider running them as an application instead.
-      See the <a href="https://github.com/cloudflare/notebook-examples">source repository</a> to learn how.
-    </p>
-
-    <p>
-      If you have any questions, feel free to join our <a href="https://discord.com/invite/cloudflaredev">Discord server</a>.
-    </p>
   </div>
 </body>
 </html>
