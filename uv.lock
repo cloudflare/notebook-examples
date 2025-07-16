@@ -439,7 +439,7 @@ wheels = [
 
 [[package]]
 name = "moutils"
-version = "0.3.11"
+version = "0.3.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anywidget" },
@@ -499,7 +499,7 @@ requires-dist = [
     { name = "flake8", specifier = "==7.3.0" },
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "marimo", specifier = "==0.14.11" },
-    { name = "moutils", specifier = "==0.3.11" },
+    { name = "moutils", specifier = "==0.3.12" },
     { name = "pandas", specifier = "==2.3.1" },
     { name = "polars", specifier = "==1.31.0" },
     { name = "pyyaml", specifier = "==6.0.2" },
@@ -513,7 +513,7 @@ dev = [
     { name = "flake8", specifier = "==7.3.0" },
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "marimo", specifier = "==0.14.11" },
-    { name = "moutils", specifier = "==0.3.11" },
+    { name = "moutils", specifier = "==0.3.12" },
     { name = "pandas", specifier = "==2.3.1" },
     { name = "polars", specifier = "==1.31.0" },
     { name = "pyyaml", specifier = "==6.0.2" },

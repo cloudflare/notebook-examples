@@ -1,7 +1,7 @@
 altair==5.5.0
 flake8==7.3.0
 marimo==0.14.11
-moutils==0.3.11
+moutils==0.3.12
 pandas==2.3.1
 polars==1.31.0
 requests==2.31.0
