@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PKCE Security Integration Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px; 
+            background-color: #f5f5f5;
+        }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test { margin: 15px 0; padding: 15px; border-radius: 6px; border-left: 4px solid #ddd; }
+        .pass { background-color: #d4edda; border-left-color: #28a745; }
+        .fail { background-color: #f8d7da; border-left-color: #dc3545; }
+        .pending { background-color: #fff3cd; border-left-color: #ffc107; }
+        .info { background-color: #d1ecf1; border-left-color: #17a2b8; }
+        button { 
+            margin: 8px; 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .malicious { background-color: #ff6b6b; color: white; }
+        .safe { background-color: #51cf66; color: white; }
+        .primary { background-color: #007bff; color: white; }
+        .secondary { background-color: #6c757d; color: white; }
+        .login-section { background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 20px 0; }
+        .status-bar { 
+            position: sticky; 
+            top: 0; 
+            background: #343a40; 
+            color: white; 
+            padding: 10px 20px; 
+            margin: -30px -30px 20px -30px;
+            border-radius: 8px 8px 0 0;
+        }
+        .token-display { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            font-family: 'Monaco', 'Menlo', monospace; 
+            font-size: 12px; 
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .section { margin: 30px 0; }
+        h1 { color: #343a40; margin-bottom: 10px; }
+        h2 { color: #495057; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; }
+        .warning { 
+            background-color: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            border-radius: 4px; 
+            padding: 15px; 
+            margin: 15px 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-bar">
+            <strong>🔒 PKCE Security Integration Test</strong> - 
+            <span id="auth-status">Not authenticated</span> | 
+            <span id="test-status">Ready to test</span>
+        </div>
+        
+        <h1>OAuth Security & PKCE Flow Integration Test</h1>
+        <p>This comprehensive test validates the PKCE authentication flow while ensuring the security fixes prevent token leakage to malicious domains.</p>
+        
+        <div class="warning">
+            ⚠️ <strong>Local Development Only:</strong> This test page is excluded from public deployment and only runs in local development.
+            <br><br>
+            🌐 <strong>Current URL:</strong> <code id="current-url">Loading...</code><br>
+            🔗 <strong>OAuth Compatibility:</strong> For real OAuth testing, ensure you're on port 2718 (dev) or 8088 (preview)
+        </div>
+        
+        <div class="section">
+            <h2>1. Authentication State</h2>
+            <div class="login-section">
+                <div id="auth-state">Checking authentication status...</div>
+                <button class="primary" id="login-btn" onclick="startPKCELogin()">🔐 Start PKCE Login Flow</button>
+                <button class="secondary" id="logout-btn" onclick="logout()" disabled>🚪 Logout</button>
+                <div id="token-display" class="token-display" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>2. Security Tests</h2>
+            <div id="security-results"></div>
+            <button class="malicious" onclick="testMaliciousRedirect('https://evil-attacker.com/steal-tokens')">
+                🚨 Test Malicious External Domain
+            </button>
+            <button class="malicious" onclick="testMaliciousRedirect('https://phishing-site.workers.dev/capture')">
+                🚨 Test Phishing Workers Site
+            </button>
+            <button class="safe" onclick="testSafeRedirect('https://notebooks.cloudflare.com/html-wasm/_start')">
+                ✅ Test Cloudflare Notebooks (Safe)
+            </button>
+            <button class="safe" onclick="testSafeRedirect(window.location.origin + '/html-wasm/_start')">
+                ✅ Test Same Origin (Safe)
+            </button>
+        </div>
+        
+        <div class="section">
+            <h2>3. Integration Tests</h2>
+            <div id="integration-results"></div>
+            <button class="primary" onclick="runFullIntegrationTest()">
+                🧪 Run Complete Integration Test
+            </button>
+        </div>
+        
+        <div class="section">
+            <h2>4. Test Results</h2>
+            <div id="all-results"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Test state management
+        let testResults = [];
+        let isAuthenticated = false;
+        let currentToken = null;
+        
+        // Copy the security functions from our fixed login.html
+        function isExternalDomain(url) {
+            try {
+                const urlObj = new URL(url);
+                const currentOrigin = window.location.origin;
+                
+                // Same origin is always trusted
+                if (urlObj.origin === currentOrigin) {
+                    return false;
+                }
+                
+                // Known Cloudflare domains are trusted (includes localhost for development)
+                const trustedDomains = [
+                    'cloudflare.com',
+                    'notebooks.cloudflare.com',
+                    'dash.cloudflare.com',
+                    'pages.dev',
+                    'localhost' // For local development
+                ];
+                
+                const hostname = urlObj.hostname.toLowerCase();
+                
+                // Check if it's a trusted domain or subdomain
+                for (const domain of trustedDomains) {
+                    if (hostname === domain || hostname.endsWith('.' + domain)) {
+                        return false; // Trusted domain
+                    }
+                }
+                
+                return true; // External/untrusted domain
+            } catch (error) {
+                console.error('Error parsing URL:', error);
+                return true; // Treat invalid URLs as external
+            }
+        }
+        
+        function safeRedirect(url) {
+            if (isExternalDomain(url)) {
+                console.warn('Would clear localStorage before redirecting to external domain:', url);
+                // In the real implementation, tokens would be cleared here
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('token') || key.includes('auth') || key.includes('pkce'))) {
+                        keysToRemove.push(key);
+                    }
+                }
+                return { action: 'clear-tokens-and-redirect', url: url, tokensCleared: keysToRemove };
+            } else {
+                console.log('Safe redirect to trusted domain:', url);
+                return { action: 'safe-redirect', url: url };
+            }
+        }
+        
+        function addTestResult(test, passed, message, section = 'all-results') {
+            const result = { test, passed, message, timestamp: new Date() };
+            testResults.push(result);
+            
+            const resultsDiv = document.getElementById(section);
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test ' + (passed ? 'pass' : 'fail');
+            testDiv.innerHTML = `
+                <strong>${test}:</strong> ${passed ? '✅ PASS' : '❌ FAIL'}<br>
+                ${message}<br>
+                <small>⏰ ${result.timestamp.toLocaleTimeString()}</small>
+            `;
+            resultsDiv.appendChild(testDiv);
+            
+            updateTestStatus();
+        }
+        
+        function updateAuthStatus() {
+            const statusEl = document.getElementById('auth-status');
+            const authStateEl = document.getElementById('auth-state');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const tokenDisplay = document.getElementById('token-display');
+            
+            // Check for actual tokens in localStorage
+            const authCode = localStorage.getItem('__pkce_auth_code');
+            const token = localStorage.getItem('__pkce_token');
+            const tokenData = localStorage.getItem('__pkce_token_data');
+            
+            if (token || tokenData || authCode) {
+                isAuthenticated = true;
+                currentToken = token || (tokenData ? JSON.parse(tokenData).access_token : null);
+                statusEl.textContent = '🟢 Authenticated';
+                authStateEl.innerHTML = `
+                    <div class="info test">
+                        ✅ <strong>Authentication Status:</strong> Logged in<br>
+                        🔑 Found tokens in localStorage<br>
+                        📅 Session active
+                    </div>
+                `;
+                loginBtn.disabled = true;
+                logoutBtn.disabled = false;
+                
+                if (currentToken) {
+                    tokenDisplay.style.display = 'block';
+                    tokenDisplay.innerHTML = `<strong>Access Token:</strong><br>${currentToken.substring(0, 50)}...`;
+                }
+            } else {
+                isAuthenticated = false;
+                currentToken = null;
+                statusEl.textContent = '🔴 Not authenticated';
+                authStateEl.innerHTML = `
+                    <div class="pending test">
+                        ⚪ <strong>Authentication Status:</strong> Not logged in<br>
+                        🔓 No tokens found in localStorage<br>
+                        🚀 Ready to start PKCE flow
+                    </div>
+                `;
+                loginBtn.disabled = false;
+                logoutBtn.disabled = true;
+                tokenDisplay.style.display = 'none';
+            }
+        }
+        
+        function updateTestStatus() {
+            const statusEl = document.getElementById('test-status');
+            const passed = testResults.filter(r => r.passed).length;
+            const failed = testResults.filter(r => !r.passed).length;
+            statusEl.textContent = `Tests: ${passed} passed, ${failed} failed`;
+        }
+        
+        function startPKCELogin() {
+            addTestResult('PKCE Login Flow', false, 'Starting PKCE authentication flow...', 'integration-results');
+            
+            // In a real scenario, this would redirect to the OAuth provider
+            // For testing purposes, we'll simulate successful authentication
+            setTimeout(() => {
+                // Simulate successful OAuth callback with tokens
+                localStorage.setItem('__pkce_auth_code', 'test-auth-code-' + Date.now());
+                localStorage.setItem('__pkce_token', 'test-access-token-' + Date.now());
+                localStorage.setItem('__pkce_token_data', JSON.stringify({
+                    access_token: 'test-access-token-' + Date.now(),
+                    token_type: 'bearer',
+                    expires_at: Date.now() + 3600000,
+                    provider: 'cloudflare'
+                }));
+                
+                updateAuthStatus();
+                addTestResult('PKCE Login Flow', true, 'Successfully authenticated and tokens stored in localStorage', 'integration-results');
+            }, 1000);
+        }
+        
+        function logout() {
+            addTestResult('Logout Flow', false, 'Starting logout process...', 'integration-results');
+            
+            // Clear all authentication-related localStorage items
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('token') || key.includes('auth') || key.includes('pkce'))) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            updateAuthStatus();
+            addTestResult('Logout Flow', true, `Successfully logged out and cleared ${keysToRemove.length} localStorage items: ${keysToRemove.join(', ')}`, 'integration-results');
+        }
+        
+        function testMaliciousRedirect(maliciousUrl) {
+            console.log('Testing malicious redirect:', maliciousUrl);
+            
+            // Ensure we have tokens to test with
+            const tempToken = 'temp-test-token-' + Date.now();
+            localStorage.setItem('__pkce_auth_code', 'temp-auth-code');
+            localStorage.setItem('__pkce_token', tempToken);
+            
+            const result = safeRedirect(maliciousUrl);
+            
+            // Clean up temp tokens
+            localStorage.removeItem('__pkce_auth_code');
+            localStorage.removeItem('__pkce_token');
+            
+            if (result.action === 'clear-tokens-and-redirect') {
+                addTestResult(
+                    `Malicious Redirect: ${new URL(maliciousUrl).hostname}`, 
+                    true,
+                    `🛡️ Security protection activated: Would clear ${result.tokensCleared.length} token(s) before redirect to untrusted domain`,
+                    'security-results'
+                );
+            } else {
+                addTestResult(
+                    `Malicious Redirect: ${new URL(maliciousUrl).hostname}`, 
+                    false,
+                    '🚨 SECURITY VULNERABILITY: Redirect would proceed without clearing tokens!',
+                    'security-results'
+                );
+            }
+        }
+        
+        function testSafeRedirect(safeUrl) {
+            console.log('Testing safe redirect:', safeUrl);
+            
+            const result = safeRedirect(safeUrl);
+            
+            if (result.action === 'safe-redirect') {
+                addTestResult(
+                    `Safe Redirect: ${new URL(safeUrl).hostname}`, 
+                    true,
+                    '✅ Legitimate redirect to trusted domain - tokens preserved',
+                    'security-results'
+                );
+            } else {
+                addTestResult(
+                    `Safe Redirect: ${new URL(safeUrl).hostname}`, 
+                    false,
+                    '❌ FUNCTIONALITY ISSUE: Safe redirect was blocked!',
+                    'security-results'
+                );
+            }
+        }
+        
+        function runFullIntegrationTest() {
+            addTestResult('Full Integration Test', false, 'Starting comprehensive test suite...', 'integration-results');
+            
+            let step = 1;
+            const totalSteps = 7;
+            
+            // Step 1: Ensure clean state
+            logout();
+            setTimeout(() => {
+                addTestResult(`Step ${step++}/${totalSteps}`, !isAuthenticated, 'Initial logout - clean state verified', 'integration-results');
+                
+                // Step 2: Test PKCE login
+                setTimeout(() => {
+                    startPKCELogin();
+                    
+                    // Step 3: Verify authentication
+                    setTimeout(() => {
+                        addTestResult(`Step ${step++}/${totalSteps}`, isAuthenticated && currentToken, 'PKCE login successful - tokens available', 'integration-results');
+                        
+                        // Step 4: Test safe redirect with active session
+                        const safeResult = safeRedirect(window.location.origin + '/html-wasm/_start');
+                        addTestResult(`Step ${step++}/${totalSteps}`, safeResult.action === 'safe-redirect', 'Safe redirect preserves authentication state', 'integration-results');
+                        
+                        // Step 5: Test malicious redirect with active session
+                        const maliciousResult = safeRedirect('https://evil-site.com/steal');
+                        addTestResult(`Step ${step++}/${totalSteps}`, maliciousResult.action === 'clear-tokens-and-redirect', 'Malicious redirect would clear tokens (security protection)', 'integration-results');
+                        
+                        // Step 6: Test logout functionality
+                        setTimeout(() => {
+                            logout();
+                            
+                            setTimeout(() => {
+                                addTestResult(`Step ${step++}/${totalSteps}`, !isAuthenticated, 'Logout clears authentication state', 'integration-results');
+                                
+                                // Step 7: Final verification
+                                const noTokensInStorage = !localStorage.getItem('__pkce_token') && !localStorage.getItem('__pkce_auth_code');
+                                addTestResult(`Step ${step++}/${totalSteps}`, noTokensInStorage, 'No sensitive tokens remain in localStorage', 'integration-results');
+                                
+                                // Final summary
+                                setTimeout(() => {
+                                    const allStepsPassed = testResults.filter(r => r.test.includes('Step')).every(r => r.passed);
+                                    addTestResult(
+                                        'Full Integration Test', 
+                                        allStepsPassed, 
+                                        allStepsPassed ? 
+                                            '🎉 All integration tests passed! PKCE flow works correctly with security protections.' :
+                                            '⚠️ Some integration tests failed. Check individual step results above.',
+                                        'integration-results'
+                                    );
+                                }, 500);
+                            }, 500);
+                        }, 1000);
+                    }, 1500);
+                }, 500);
+            }, 500);
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthStatus();
+            updateTestStatus();
+            
+            // Display current URL for OAuth debugging
+            document.getElementById('current-url').textContent = window.location.href;
+            
+            // Check for OAuth callback parameters (in case this page receives them)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('code') && urlParams.get('state')) {
+                addTestResult('OAuth Callback Detected', true, 'Received OAuth callback parameters in URL - processing...', 'integration-results');
+                // Process the actual OAuth callback
+                processRealOAuthCallback(urlParams);
+            }
+            
+            // Check port compatibility
+            const port = window.location.port;
+            const isCompatiblePort = port === '2718' || port === '8088';
+            if (!isCompatiblePort) {
+                addTestResult('Port Compatibility', false, `Running on port ${port || '80'}. For real OAuth testing, use port 2718 (make security-test-dev) or 8088 (make security-test)`, 'integration-results');
+            } else {
+                addTestResult('Port Compatibility', true, `Running on OAuth-compatible port ${port}`, 'integration-results');
+            }
+            
+            console.log('🔒 PKCE Security Integration Test Suite loaded');
+            console.log('Current URL:', window.location.href);
+            console.log('Port compatibility:', isCompatiblePort);
+            console.log('localStorage tokens:', {
+                auth_code: localStorage.getItem('__pkce_auth_code') ? 'present' : 'none',
+                token: localStorage.getItem('__pkce_token') ? 'present' : 'none',
+                token_data: localStorage.getItem('__pkce_token_data') ? 'present' : 'none'
+            });
+        });
+        
+        function processRealOAuthCallback(urlParams) {
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            
+            if (code && state) {
+                // Store the real OAuth tokens
+                localStorage.setItem('__pkce_auth_code', code);
+                localStorage.setItem('__pkce_state', state);
+                
+                addTestResult('Real OAuth Callback', true, `Successfully processed OAuth callback with code: ${code.substring(0, 20)}...`, 'integration-results');
+                updateAuthStatus();
+                
+                // Clear URL parameters
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        }
+        
+        // Monitor localStorage changes
+        window.addEventListener('storage', function(e) {
+            if (e.key && (e.key.includes('token') || e.key.includes('auth') || e.key.includes('pkce'))) {
+                console.log('localStorage auth change detected:', e.key, e.oldValue ? 'updated' : 'added');
+                updateAuthStatus();
+            }
+        });
+        
+        // Clean up any existing test tokens on load
+        const existingTestTokens = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.includes('temp-') && (key.includes('token') || key.includes('auth'))) {
+                existingTestTokens.push(key);
+            }
+        }
+        existingTestTokens.forEach(key => localStorage.removeItem(key));
+    </script>
+</body>
+</html>

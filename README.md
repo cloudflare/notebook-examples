@@ -28,6 +28,14 @@ This deployment is automatic whenever changes are merged to the `main` branch
 make edit
 ```
 - Starts Marimo server on http://localhost:2718
+
+#### Security Testing
+```bash
+make security-test
+```
+- Starts local server for PKCE security integration tests
+- Tests OAuth authentication flow with security protections
+- See [SECURITY-TEST.md](SECURITY-TEST.md) for details
 - Full Python environment with all packages
 - Best for development and testing
 

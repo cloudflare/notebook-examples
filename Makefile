@@ -45,6 +45,22 @@ export: makeinfo html-wasm ## [WASM BUILD][*] Build HTML/WASM and show preview i
 preview: makeinfo html-wasm ## [WASM SERVE][*] Serve the exported notebooks locally
 	npm run preview
 
+.PHONY: security-test
+security-test: makeinfo ## [SECURITY][*] Run the PKCE security integration test locally on port 8088
+	@echo "Starting security test server on port 8088..."
+	@echo "==> Opening security test at: http://localhost:8088/security-test.html"
+	@echo "==> This uses the same port as 'make preview' for OAuth compatibility"
+	@echo "==> Press Ctrl+C to stop the server"
+	npx wrangler pages dev --port 8088 --local
+
+.PHONY: security-test-dev
+security-test-dev: makeinfo ## [SECURITY] Run the PKCE security test on marimo dev port 2718
+	@echo "Starting security test server on port 2718..."
+	@echo "==> Opening security test at: http://localhost:2718/security-test.html"
+	@echo "==> This uses the same port as 'make edit' for OAuth compatibility"
+	@echo "==> Press Ctrl+C to stop the server"
+	npx wrangler pages dev --port 2718 --local
+
 ################################################################################
 #                              Other Commands                                  #
 ################################################################################
