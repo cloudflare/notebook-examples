@@ -8,21 +8,22 @@
 #     "requests",
 # ]
 # ///
+
 import marimo
 
 __generated_with = "0.14.11"
-app = marimo.App(width="full", app_title="Cloudflare Notebook", auto_download=["ipynb", "html"])
+app = marimo.App(width="full", app_title="Cloudflare Notebook")
 
 
-###############
-# Login Cells #
-###############
 @app.cell(hide_code=True)
 def _():
     # Helper Stub - click to view code
     import json, marimo as mo, requests, warnings, moutils, urllib, sys  # noqa: E401
     from moutils.oauth import PKCEFlow
     from urllib.request import Request, urlopen
+
+    # Mark imports as used for linting (these are used by other notebook cells)
+    _ = (requests, moutils, urllib)
 
     debug = False
     warnings.filterwarnings("ignore", category=UserWarning, module="pkg_resources")
@@ -46,15 +47,15 @@ def _():
             print("Token invalid - Please login using the button above")
             if debug: print("[DEBUG] Exception:", e)
             return []
-    return PKCEFlow, Request, debug, get_accounts, is_wasm, json, mo, moutils, proxy, requests, sys, urllib, urlopen, warnings
+    return PKCEFlow, debug, get_accounts, mo
 
 
 @app.cell(hide_code=True)
 def _(PKCEFlow):
     # Login to Cloudflare - click to view code
-    df = PKCEFlow(provider="cloudflare", use_new_tab=True)
+    df = PKCEFlow(provider="cloudflare", debug=True)
     df
-    return df
+    return (df,)
 
 
 @app.cell(hide_code=True)
@@ -87,9 +88,6 @@ def _(accounts, df, mo, radio):
     return account_id, account_name
 
 
-##################
-# Notebook Cells #
-##################
 @app.cell
 def _(account_id, account_name, df):
     print("Hello, World! 🌎")
