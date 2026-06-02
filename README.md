@@ -1,3 +1,7 @@
+> Notebooks was an experiment in running interactive Python against the Cloudflare API, right from your browser. We're winding it down on **August 1, 2026**, after which [notebooks.cloudflare.com](https://notebooks.cloudflare.com) will go offline. Thank you for playing along.
+>
+> The example notebooks will remain on [GitHub](https://github.com/cloudflare/notebook-examples). You can find us on [Discord](https://discord.com/invite/cloudflaredev). 👋
+
 # Notebook Examples
 
 Interactive Python notebooks demonstrating Cloudflare services, APIs, and workflows. These examples cover tasks from analyzing logs to writing billing reports, storing files in [R2](https://www.cloudflare.com/developer-platform/products/r2/), querying [D1](https://developers.cloudflare.com/d1/) databases, and more!
@@ -93,7 +97,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
      file: "my_notebook.py"
    ```
 3. **Test python locally**: `make edit`
-4. **Test WASM locally**: `make export && make preview` 
+4. **Test WASM locally**: `make export && make preview`
 5. **Submit a PR** with your changes. See
 
 ## 🔧 Technical Details

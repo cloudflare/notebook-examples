@@ -68,6 +68,12 @@ header .logo {
     height: 350px;
 }
 
+.info {
+    background-color: #ffe4b8;
+    padding: 2ex 1em;
+    font-size: 90%;
+}
+
 #notebooks {
     margin: 40px 20px;
 }
